@@ -1,4 +1,4 @@
-from ..config import read_config
+from autoseg.config import read_config
 from .zarr_dataset import GunpowderZarrDataset
 
 

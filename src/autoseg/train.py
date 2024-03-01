@@ -13,6 +13,7 @@ from models import ExampleModel
 from losses import WeightedMSELoss
 from datasets import GunpowderZarrDataset, Kh2015
 from config import read_config
+from autoseg.datasets.utils import multisample_collate as collate
 
 pipeline = None
 
@@ -32,7 +33,11 @@ def train(
     update_steps=1000,
 ):
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, num_workers=5, prefetch_factor=4
+        dataset,
+        batch_size=batch_size,
+        num_workers=5,
+        prefetch_factor=4,
+        collate_fn=collate,
     )
 
     crit = WeightedMSELoss()
@@ -44,7 +49,11 @@ def train(
     if val_dataset is not None:
         val_iter = iter(
             DataLoader(
-                val_dataset, batch_size=batch_size, num_workers=5, prefetch_factor=4
+                val_dataset,
+                batch_size=batch_size,
+                num_workers=5,
+                prefetch_factor=4,
+                collate_fn=collate,
             )
         )
 
@@ -179,4 +188,4 @@ if __name__ == "__main__":
         output_shape=(12, 120, 120),
     )
 
-    train(model, dataset)
+    train(model, dataset, batch_size=10)

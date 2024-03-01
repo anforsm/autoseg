@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 import random
 
 from .load_dataset import download_dataset, get_dataset_path
-from ..transforms import PreprocessingPipeline
+from autoseg.transforms import PreprocessingPipeline
 
 
 def calc_max_padding(output_size, voxel_size, sigma, mode="shrink"):
