@@ -1,7 +1,6 @@
 from pathlib import Path
 import os
 import fsspec
-from .zarr_dataset import ZarrDataset
 
 ROOT_PATH = Path.home() / Path(".cache/autoseg/datasets/")
 
@@ -13,7 +12,11 @@ def get_synapseweb_dataset_names(dataset):
     return repo_id, volume, filename
 
 
-def download_dataset(dataset="SynapseWeb/kh2015/oblique"):
+def download_dataset(dataset="SynapseWeb/kh2015/oblique", force=False):
+    if dataset_exists(dataset) and not force:
+        print("Dataset already found on disk, downloading...")
+        return
+
     if dataset.startswith("SynapseWeb"):
         repo_id, volume, filename = get_synapseweb_dataset_names(dataset)
 
@@ -31,25 +34,13 @@ def download_dataset(dataset="SynapseWeb/kh2015/oblique"):
         raise ValueError("Only SynapseWeb datasets are supported at the moment")
 
 
-def dataset_exists(dataset="SynapseWeb/kh2015/oblique"):
+def get_dataset_path(dataset="SynapseWeb/kh2015/oblique"):
     repo_id, _, filename = get_synapseweb_dataset_names(dataset)
-    return (ROOT_PATH / Path(repo_id) / Path(filename)).exists()
+    return ROOT_PATH / Path(repo_id) / Path(filename)
 
 
-def load_dataset(dataset="SynapseWeb/kh2015/oblique"):
-    repo_id, volume, filename = get_synapseweb_dataset_names(dataset)
-
-    if not dataset_exists(dataset):
-        print("Dataset not found on disk, downloading...")
-        download_dataset(dataset)
-
-    dataset = ZarrDataset(
-        container_path=ROOT_PATH / Path(repo_id) / Path(filename),
-        dataset_name="raw/s0",
-        num_spatial_dims=3,
-        crop_shape=(36, 212, 212),  # (50, 512, 512)
-    )
-    return dataset
+def dataset_exists(dataset="SynapseWeb/kh2015/oblique"):
+    return get_dataset_path(dataset).exists()
 
 
 if __name__ == "__main__":

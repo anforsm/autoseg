@@ -1,26 +1,41 @@
+import os
+
 import torch
+from torch.utils.data import DataLoader
+
 import numpy as np
 from einops import rearrange
 
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
+
 from models import ExampleModel
 from losses import WeightedMSELoss
-from datasets import ZarrDataset, load_dataset
+from datasets import GunpowderZarrDataset, load_dataset, Kh2015
 
-WANDB_LOG = True
-if WANDB_LOG:
-    import wandb
 pipeline = None
 
 DEVICE = "cuda"
 
+WANDB_LOG = False
+if WANDB_LOG:
+    import wandb
 
-def train(model, dataset, val_dataset=None):
-    batch_size = 1
+
+def train(
+    model,
+    dataset,
+    val_dataset=None,
+    batch_size=1,
+    learning_rate=1e-5,
+    update_steps=1000,
+):
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+
     crit = WeightedMSELoss()
     # crit = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    steps = 20_000
     step = 0
     input_size = (36, 212, 212)
     output_size = (12, 120, 120)
@@ -28,9 +43,9 @@ def train(model, dataset, val_dataset=None):
     if val_dataset is not None:
         val_iter = iter(val_dataset.request_batch(input_size, output_size))
 
-    val_log = 100
+    val_log = 1000
 
-    batch_iterator = iter(dataset.request_batch(input_size, output_size))
+    batch_iterator = iter(dataloader)
     avg_loss = 0
     lowest_val_loss = float("inf")
     for raw, labels, affs, affs_weights in batch_iterator:
@@ -50,7 +65,7 @@ def train(model, dataset, val_dataset=None):
         step += 1
 
         print(
-            f"Step {step}/{steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
+            f"Step {step}/{update_steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
             end="\r",
         )
         if WANDB_LOG:
@@ -58,13 +73,13 @@ def train(model, dataset, val_dataset=None):
                 {
                     "step": step,
                     "loss": loss.item(),
-                    "num_images": step * 12,
-                    "epoch": step / 544,
+                    "num_images": step,  # * 12,
+                    "epoch": step / 544,  # should divide by batch size as well
                 }
             )
 
         if step % val_log == 0:
-            torch.save(model.state_dict(), "out/latest_model.pt")
+            torch.save(model.state_dict(), "out/latest_model3.pt")
             with torch.no_grad():
                 model.eval()
                 raw, labels, affs, affs_weights = next(batch_iterator)
@@ -136,12 +151,12 @@ def train(model, dataset, val_dataset=None):
                     avg_loss /= num_val_batches
                     if avg_loss < lowest_val_loss:
                         lowest_val_loss = avg_loss
-                        torch.save(model.state_dict(), "out/best_model.pt")
+                        torch.save(model.state_dict(), "out/best_model3.pt")
                     wandb.log({"val_loss": avg_loss})
 
                 model.train()
 
-        if step >= steps:
+        if step >= update_steps:
             break
 
 
@@ -149,6 +164,10 @@ if __name__ == "__main__":
     if WANDB_LOG:
         wandb.init(project="autoseg")
     model = ExampleModel()
+    model = torch.compile(model)
     model.to(DEVICE)
-    dataset = load_dataset("SynapseWeb/kh2015/apical")
+
+    dataset = Kh2015()
+    # dataset = load_dataset("SynapseWeb/kh2015/apical")
+
     train(model, dataset, val_dataset=load_dataset("SynapseWeb/kh2015/oblique"))
