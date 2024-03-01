@@ -13,9 +13,12 @@ def get_synapseweb_dataset_names(dataset):
 
 
 def download_dataset(dataset="SynapseWeb/kh2015/oblique", force=False):
-    if dataset_exists(dataset) and not force:
-        print("Dataset already found on disk, downloading...")
+    if dataset_exists(dataset):
         return
+    else:
+        print("Dataset not found on disk, downloading...")
+    if force:
+        print("Downloading dataset")
 
     if dataset.startswith("SynapseWeb"):
         repo_id, volume, filename = get_synapseweb_dataset_names(dataset)

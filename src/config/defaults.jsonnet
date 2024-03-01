@@ -60,6 +60,10 @@
         array: raw,
         scale: 2,
         shift: -1
+      }},
+      {unsqueeze: {
+        arrays: [raw],
+        axis: 0,
       }}
     ]
   },

@@ -11,7 +11,8 @@ from torch.distributed import init_process_group, destroy_process_group
 
 from models import ExampleModel
 from losses import WeightedMSELoss
-from datasets import GunpowderZarrDataset, load_dataset, Kh2015
+from datasets import GunpowderZarrDataset, Kh2015
+from config import read_config
 
 pipeline = None
 
@@ -30,24 +31,29 @@ def train(
     learning_rate=1e-5,
     update_steps=1000,
 ):
-    dataloader = DataLoader(dataset, batch_size=batch_size)
+    dataloader = DataLoader(
+        dataset, batch_size=batch_size, num_workers=5, prefetch_factor=4
+    )
 
     crit = WeightedMSELoss()
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     step = 0
-    input_size = (36, 212, 212)
-    output_size = (12, 120, 120)
 
     if val_dataset is not None:
-        val_iter = iter(val_dataset.request_batch(input_size, output_size))
+        val_iter = iter(
+            DataLoader(
+                val_dataset, batch_size=batch_size, num_workers=5, prefetch_factor=4
+            )
+        )
 
     val_log = 1000
 
-    batch_iterator = iter(dataloader)
     avg_loss = 0
     lowest_val_loss = float("inf")
+
+    batch_iterator = iter(dataloader)
     for raw, labels, affs, affs_weights in batch_iterator:
         raw = torch.tensor(raw.copy()).to(DEVICE)
         # raw = raw[None, None, ...]
@@ -167,7 +173,10 @@ if __name__ == "__main__":
     model = torch.compile(model)
     model.to(DEVICE)
 
-    dataset = Kh2015()
-    # dataset = load_dataset("SynapseWeb/kh2015/apical")
+    dataset = Kh2015(
+        transform=read_config("examples/no_augments")["pipeline"],
+        input_shape=(36, 212, 212),
+        output_shape=(12, 120, 120),
+    )
 
-    train(model, dataset, val_dataset=load_dataset("SynapseWeb/kh2015/oblique"))
+    train(model, dataset)

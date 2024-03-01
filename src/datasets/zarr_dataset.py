@@ -53,6 +53,8 @@ class GunpowderZarrDataset(IterableDataset):
         dataset: str,
         dataset_name: str,
         num_spatial_dims: int,
+        input_image_shape: Tuple[int, int, int],
+        output_image_shape: Tuple[int, int, int],
         control_point_spacing: int = 100,
         control_point_jitter: float = 100.0,
         download=True,
@@ -65,6 +67,9 @@ class GunpowderZarrDataset(IterableDataset):
             self.transform = PreprocessingPipeline(config=transform)
         else:
             self.transform = None
+
+        self.input_image_shape = input_image_shape
+        self.output_image_shape = output_image_shape
 
         self.container_path = get_dataset_path(dataset)
         self.dataset_name = dataset_name
@@ -80,9 +85,6 @@ class GunpowderZarrDataset(IterableDataset):
         # self.shape = (100, 100, 100)
 
         self.__setup_pipeline()
-
-    def __iter__(self):
-        return iter(self.__yield_sample())
 
     def __setup_pipeline(self):
         self.raw = gp.ArrayKey("RAW")
@@ -110,10 +112,12 @@ class GunpowderZarrDataset(IterableDataset):
             },
         )
 
-        self.post_pipeline = gp.PrintProfilingStats()  # gp.Unsqueeze([self.raw])
+        self.post_pipeline = None  # gp.Unsqueeze([self.raw])
+
+    def __iter__(self):
+        return iter(self.request_batch(self.input_image_shape, self.output_image_shape))
 
     def request_batch(self, input_shape, output_shape):
-        print(self.voxel_size)
         input_size = gp.Coordinate(input_shape) * self.voxel_size
         output_size = gp.Coordinate(output_shape) * self.voxel_size
 
@@ -134,7 +138,8 @@ class GunpowderZarrDataset(IterableDataset):
 
         pipeline += user_pipeline
 
-        pipeline += self.post_pipeline
+        if not self.post_pipeline is None:
+            pipeline += self.post_pipeline
 
         with gp.build(pipeline):
             while True:
@@ -149,9 +154,12 @@ class GunpowderZarrDataset(IterableDataset):
                     request.add(ak, output_size)
 
                 sample = pipeline.request_batch(request)
-                yield sample[self.raw].data, sample[
-                    self.labels
-                ].data  # , sample[self.gt_affs].data, sample[self.affs_weights].data
+                yield (
+                    sample[self.raw].data,
+                    sample[self.labels].data,
+                    sample[self.gt_affs].data,
+                    sample[self.affs_weights].data,
+                )
 
     # def __len__(self):
     #    shape_sum = sum(self.shape)
