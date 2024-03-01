@@ -322,9 +322,11 @@ class UNet(torch.nn.Module):
         self.l_conv = nn.ModuleList(
             [
                 ConvPass(
-                    in_channels
-                    if level == 0
-                    else num_fmaps * fmap_inc_factor ** (level - 1),
+                    (
+                        in_channels
+                        if level == 0
+                        else num_fmaps * fmap_inc_factor ** (level - 1)
+                    ),
                     num_fmaps * fmap_inc_factor**level,
                     kernel_size_down[level],
                     activation=activation,
@@ -350,9 +352,9 @@ class UNet(torch.nn.Module):
                     [
                         Upsample(
                             downsample_factors[level],
-                            mode="trilinear"
-                            if constant_upsample
-                            else "transposed_conv",
+                            mode=(
+                                "trilinear" if constant_upsample else "transposed_conv"
+                            ),
                             in_channels=num_fmaps * fmap_inc_factor ** (level + 1),
                             out_channels=num_fmaps * fmap_inc_factor ** (level + 1),
                             crop_factor=crop_factors[level],
@@ -374,9 +376,11 @@ class UNet(torch.nn.Module):
                         ConvPass(
                             num_fmaps * fmap_inc_factor**level
                             + num_fmaps * fmap_inc_factor ** (level + 1),
-                            num_fmaps * fmap_inc_factor**level
-                            if num_fmaps_out is None or level != 0
-                            else num_fmaps_out,
+                            (
+                                num_fmaps * fmap_inc_factor**level
+                                if num_fmaps_out is None or level != 0
+                                else num_fmaps_out
+                            ),
                             kernel_size_up[level],
                             activation=activation,
                             padding=padding,
