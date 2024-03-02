@@ -12,7 +12,7 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{env.PYTHON_LATEST}}
-      run: pip install sphinx_rtd_theme
+    - run: pip install sphinx_rtd_theme
     - uses: actions/checkout@v4
     - name: Build HTML
       uses: ammaraskar/sphinx-action@master
