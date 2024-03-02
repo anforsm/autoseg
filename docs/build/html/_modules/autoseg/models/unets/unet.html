@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>autoseg.models.unets.unet &mdash; autoseg  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../../index.html" class="icon icon-home">
+            autoseg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">autoseg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">autoseg.models.unets.unet</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for autoseg.models.unets.unet</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">funlib.learn.torch.models.conv4d</span> <span class="kn">import</span> <span class="n">Conv4d</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+
+
+<div class="viewcode-block" id="ConvPass">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.ConvPass">[docs]</a>
+<span class="k">class</span> <span class="nc">ConvPass</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_sizes</span><span class="p">,</span> <span class="n">activation</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;valid&quot;</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ConvPass</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">activation</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">activation</span><span class="p">)</span>
+
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">kernel_size</span> <span class="ow">in</span> <span class="n">kernel_sizes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">kernel_size</span><span class="p">)</span>
+
+            <span class="n">conv</span> <span class="o">=</span> <span class="p">{</span><span class="mi">2</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv3d</span><span class="p">,</span> <span class="mi">4</span><span class="p">:</span> <span class="n">Conv4d</span><span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">padding</span> <span class="o">==</span> <span class="s2">&quot;same&quot;</span><span class="p">:</span>
+                <span class="n">pad</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">k</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kernel_size</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">pad</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conv</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">pad</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">D convolution not implemented&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+
+            <span class="n">in_channels</span> <span class="o">=</span> <span class="n">out_channels</span>
+
+            <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">activation</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_pass</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">layers</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConvPass.forward">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.ConvPass.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_pass</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Downsample">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Downsample">[docs]</a>
+<span class="k">class</span> <span class="nc">Downsample</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">downsample_factor</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Downsample</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">downsample_factor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">downsample_factor</span> <span class="o">=</span> <span class="n">downsample_factor</span>
+
+        <span class="n">pool</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">,</span>
+            <span class="mi">3</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MaxPool3d</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">MaxPool3d</span><span class="p">,</span>  <span class="c1"># only 3D pooling, even for 4D input</span>
+        <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">down</span> <span class="o">=</span> <span class="n">pool</span><span class="p">(</span><span class="n">downsample_factor</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">downsample_factor</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Downsample.forward">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Downsample.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">()[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">downsample_factor</span><span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Can not downsample shape </span><span class="si">%s</span><span class="s2"> with factor </span><span class="si">%s</span><span class="s2">, mismatch &quot;</span>
+                    <span class="s2">&quot;in spatial dimension </span><span class="si">%d</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">downsample_factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">-</span> <span class="n">d</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">down</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Upsample">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Upsample">[docs]</a>
+<span class="k">class</span> <span class="nc">Upsample</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">scale_factor</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;transposed_conv&quot;</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">out_channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">crop_factor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">next_conv_kernel_sizes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Upsample</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">assert</span> <span class="p">(</span><span class="n">crop_factor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span>
+            <span class="n">next_conv_kernel_sizes</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;crop_factor and next_conv_kernel_sizes have to be given together&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">crop_factor</span> <span class="o">=</span> <span class="n">crop_factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next_conv_kernel_sizes</span> <span class="o">=</span> <span class="n">next_conv_kernel_sizes</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">scale_factor</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;transposed_conv&quot;</span><span class="p">:</span>
+            <span class="n">up</span> <span class="o">=</span> <span class="p">{</span><span class="mi">2</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose2d</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ConvTranspose3d</span><span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">up</span> <span class="o">=</span> <span class="n">up</span><span class="p">(</span>
+                <span class="n">in_channels</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">scale_factor</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">scale_factor</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">up</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Upsample</span><span class="p">(</span><span class="n">scale_factor</span><span class="o">=</span><span class="n">scale_factor</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="o">=</span> <span class="n">padding</span>
+
+<div class="viewcode-block" id="Upsample.crop_to_factor">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Upsample.crop_to_factor">[docs]</a>
+    <span class="k">def</span> <span class="nf">crop_to_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">kernel_sizes</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Crop feature maps to ensure translation equivariance with stride of</span>
+<span class="sd">        upsampling factor. This should be done right after upsampling, before</span>
+<span class="sd">        application of the convolutions with the given kernel sizes.</span>
+
+<span class="sd">        The crop could be done after the convolutions, but it is more efficient</span>
+<span class="sd">        to do that before (feature maps will be smaller).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="n">spatial_shape</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="p">:]</span>
+
+        <span class="c1"># the crop that will already be done due to the convolutions</span>
+        <span class="n">convolution_crop</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="nb">sum</span><span class="p">(</span><span class="n">ks</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">ks</span> <span class="ow">in</span> <span class="n">kernel_sizes</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># we need (spatial_shape - convolution_crop) to be a multiple of</span>
+        <span class="c1"># factor, i.e.:</span>
+        <span class="c1">#</span>
+        <span class="c1"># (s - c) = n*k</span>
+        <span class="c1">#</span>
+        <span class="c1"># we want to find the largest n for which s&#39; = n*k + c &lt;= s</span>
+        <span class="c1">#</span>
+        <span class="c1"># n = floor((s - c)/k)</span>
+        <span class="c1">#</span>
+        <span class="c1"># this gives us the target shape s&#39;</span>
+        <span class="c1">#</span>
+        <span class="c1"># s&#39; = n*k + c</span>
+
+        <span class="n">ns</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="n">f</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">spatial_shape</span><span class="p">,</span> <span class="n">convolution_crop</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">target_spatial_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="n">n</span> <span class="o">*</span> <span class="n">f</span> <span class="o">+</span> <span class="n">c</span> <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">convolution_crop</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">target_spatial_shape</span> <span class="o">!=</span> <span class="n">spatial_shape</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="p">((</span><span class="n">t</span> <span class="o">&gt;</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">target_spatial_shape</span><span class="p">,</span> <span class="n">convolution_crop</span><span class="p">))</span>
+            <span class="p">),</span> <span class="p">(</span>
+                <span class="s2">&quot;Feature map with shape </span><span class="si">%s</span><span class="s2"> is too small to ensure &quot;</span>
+                <span class="s2">&quot;translation equivariance with factor </span><span class="si">%s</span><span class="s2"> and following &quot;</span>
+                <span class="s2">&quot;convolutions </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">kernel_sizes</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">target_spatial_shape</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="Upsample.crop">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Upsample.crop">[docs]</a>
+    <span class="k">def</span> <span class="nf">crop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Center-crop x to match spatial dimensions given by shape.&quot;&quot;&quot;</span>
+
+        <span class="n">x_target_size</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">()[:</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span><span class="p">]</span> <span class="o">+</span> <span class="n">shape</span>
+
+        <span class="n">offset</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">x_target_size</span><span class="p">))</span>
+
+        <span class="n">slices</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">o</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">x_target_size</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="n">slices</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Upsample.forward">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.Upsample.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_left</span><span class="p">,</span> <span class="n">g_out</span><span class="p">):</span>
+        <span class="n">g_up</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">up</span><span class="p">(</span><span class="n">g_out</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_conv_kernel_sizes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">padding</span> <span class="o">==</span> <span class="s2">&quot;valid&quot;</span><span class="p">:</span>
+            <span class="n">g_cropped</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_to_factor</span><span class="p">(</span>
+                <span class="n">g_up</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_conv_kernel_sizes</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">g_cropped</span> <span class="o">=</span> <span class="n">g_up</span>
+
+        <span class="n">f_cropped</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">f_left</span><span class="p">,</span> <span class="n">g_cropped</span><span class="o">.</span><span class="n">size</span><span class="p">()[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="p">:])</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">f_cropped</span><span class="p">,</span> <span class="n">g_cropped</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="UNet">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.UNet">[docs]</a>
+<span class="k">class</span> <span class="nc">UNet</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="p">,</span>
+        <span class="n">num_fmaps</span><span class="p">,</span>
+        <span class="n">fmap_inc_factor</span><span class="p">,</span>
+        <span class="n">downsample_factors</span><span class="p">,</span>
+        <span class="n">kernel_size_down</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">kernel_size_up</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">activation</span><span class="o">=</span><span class="s2">&quot;ReLU&quot;</span><span class="p">,</span>
+        <span class="n">fov</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">voxel_size</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">num_fmaps_out</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_heads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">constant_upsample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">padding</span><span class="o">=</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a U-Net::</span>
+
+<span class="sd">            f_in --&gt; f_left ---------------------------&gt;&gt; f_right--&gt; f_out</span>
+<span class="sd">                        |                                   ^</span>
+<span class="sd">                        v                                   |</span>
+<span class="sd">                     g_in --&gt; g_left -------&gt;&gt; g_right --&gt; g_out</span>
+<span class="sd">                                 |               ^</span>
+<span class="sd">                                 v               |</span>
+<span class="sd">                                       ...</span>
+
+<span class="sd">        where each ``--&gt;`` is a convolution pass, each `--&gt;&gt;` a crop, and down</span>
+<span class="sd">        and up arrows are max-pooling and transposed convolutions,</span>
+<span class="sd">        respectively.</span>
+
+<span class="sd">        The U-Net expects 3D or 4D tensors shaped like::</span>
+
+<span class="sd">            ``(batch=1, channels, [length,] depth, height, width)``.</span>
+
+<span class="sd">        This U-Net performs only &quot;valid&quot; convolutions, i.e., sizes of the</span>
+<span class="sd">        feature maps decrease after each convolution. It will perfrom 4D</span>
+<span class="sd">        convolutions as long as ``length`` is greater than 1. As soon as</span>
+<span class="sd">        ``length`` is 1 due to a valid convolution, the time dimension will be</span>
+<span class="sd">        dropped and tensors with ``(b, c, z, y, x)`` will be use (and returned)</span>
+<span class="sd">        from there on.</span>
+
+<span class="sd">        Args:</span>
+
+<span class="sd">            in_channels:</span>
+
+<span class="sd">                The number of input channels.</span>
+
+<span class="sd">            num_fmaps:</span>
+
+<span class="sd">                The number of feature maps in the first layer. This is also the</span>
+<span class="sd">                number of output feature maps. Stored in the ``channels``</span>
+<span class="sd">                dimension.</span>
+
+<span class="sd">            fmap_inc_factor:</span>
+
+<span class="sd">                By how much to multiply the number of feature maps between</span>
+<span class="sd">                layers. If layer 0 has ``k`` feature maps, layer ``l`` will</span>
+<span class="sd">                have ``k*fmap_inc_factor**l``.</span>
+
+<span class="sd">            downsample_factors:</span>
+
+<span class="sd">                List of tuples ``(z, y, x)`` to use to down- and up-sample the</span>
+<span class="sd">                feature maps between layers.</span>
+
+<span class="sd">            kernel_size_down (optional):</span>
+
+<span class="sd">                List of lists of kernel sizes. The number of sizes in a list</span>
+<span class="sd">                determines the number of convolutional layers in the</span>
+<span class="sd">                corresponding level of the build on the left side. Kernel sizes</span>
+<span class="sd">                can be given as tuples or integer. If not given, each</span>
+<span class="sd">                convolutional pass will consist of two 3x3x3 convolutions.</span>
+
+<span class="sd">            kernel_size_up (optional):</span>
+
+<span class="sd">                List of lists of kernel sizes. The number of sizes in a list</span>
+<span class="sd">                determines the number of convolutional layers in the</span>
+<span class="sd">                corresponding level of the build on the right side. Within one</span>
+<span class="sd">                of the lists going from left to right. Kernel sizes can be</span>
+<span class="sd">                given as tuples or integer. If not given, each convolutional</span>
+<span class="sd">                pass will consist of two 3x3x3 convolutions.</span>
+
+<span class="sd">            activation:</span>
+
+<span class="sd">                Which activation to use after a convolution. Accepts the name</span>
+<span class="sd">                of any tensorflow activation function (e.g., ``ReLU`` for</span>
+<span class="sd">                ``torch.nn.ReLU``).</span>
+
+<span class="sd">            fov (optional):</span>
+
+<span class="sd">                Initial field of view in physical units</span>
+
+<span class="sd">            voxel_size (optional):</span>
+
+<span class="sd">                Size of a voxel in the input data, in physical units</span>
+
+<span class="sd">            num_heads (optional):</span>
+
+<span class="sd">                Number of decoders. The resulting U-Net has one single encoder</span>
+<span class="sd">                path and num_heads decoder paths. This is useful in a</span>
+<span class="sd">                multi-task learning context.</span>
+
+<span class="sd">            constant_upsample (optional):</span>
+
+<span class="sd">                If set to true, perform a constant upsampling instead of a</span>
+<span class="sd">                transposed convolution in the upsampling layers.</span>
+
+<span class="sd">            padding (optional):</span>
+
+<span class="sd">                How to pad convolutions. Either &#39;same&#39; or &#39;valid&#39; (default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">UNet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">downsample_factors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span> <span class="o">=</span> <span class="n">num_heads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">in_channels</span> <span class="o">=</span> <span class="n">in_channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_channels</span> <span class="o">=</span> <span class="n">num_fmaps_out</span> <span class="k">if</span> <span class="n">num_fmaps_out</span> <span class="k">else</span> <span class="n">num_fmaps</span>
+
+        <span class="c1"># default arguments</span>
+
+        <span class="k">if</span> <span class="n">kernel_size_down</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kernel_size_down</span> <span class="o">=</span> <span class="p">[[(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span>
+        <span class="k">if</span> <span class="n">kernel_size_up</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">kernel_size_up</span> <span class="o">=</span> <span class="p">[[(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)]]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># compute crop factors for translation equivariance</span>
+        <span class="n">crop_factors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">factor_product</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">factor</span> <span class="ow">in</span> <span class="n">downsample_factors</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">factor_product</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">factor_product</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">factor</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">factor_product</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">f</span> <span class="o">*</span> <span class="n">ff</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">ff</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">factor</span><span class="p">,</span> <span class="n">factor_product</span><span class="p">))</span>
+            <span class="n">crop_factors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">factor_product</span><span class="p">)</span>
+        <span class="n">crop_factors</span> <span class="o">=</span> <span class="n">crop_factors</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># modules</span>
+
+        <span class="c1"># left convolutional passes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l_conv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">ConvPass</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="n">in_channels</span>
+                        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="mi">0</span>
+                        <span class="k">else</span> <span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span> <span class="o">**</span> <span class="p">(</span><span class="n">level</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">),</span>
+                    <span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span><span class="o">**</span><span class="n">level</span><span class="p">,</span>
+                    <span class="n">kernel_size_down</span><span class="p">[</span><span class="n">level</span><span class="p">],</span>
+                    <span class="n">activation</span><span class="o">=</span><span class="n">activation</span><span class="p">,</span>
+                    <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_conv</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span>
+
+        <span class="c1"># left downsample layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l_down</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">Downsample</span><span class="p">(</span><span class="n">downsample_factors</span><span class="p">[</span><span class="n">level</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># right up/crop/concatenate layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_up</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">Upsample</span><span class="p">(</span>
+                            <span class="n">downsample_factors</span><span class="p">[</span><span class="n">level</span><span class="p">],</span>
+                            <span class="n">mode</span><span class="o">=</span><span class="p">(</span>
+                                <span class="s2">&quot;trilinear&quot;</span> <span class="k">if</span> <span class="n">constant_upsample</span> <span class="k">else</span> <span class="s2">&quot;transposed_conv&quot;</span>
+                            <span class="p">),</span>
+                            <span class="n">in_channels</span><span class="o">=</span><span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span> <span class="o">**</span> <span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="n">out_channels</span><span class="o">=</span><span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span> <span class="o">**</span> <span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="n">crop_factor</span><span class="o">=</span><span class="n">crop_factors</span><span class="p">[</span><span class="n">level</span><span class="p">],</span>
+                            <span class="n">next_conv_kernel_sizes</span><span class="o">=</span><span class="n">kernel_size_up</span><span class="p">[</span><span class="n">level</span><span class="p">],</span>
+                            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_heads</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># right convolutional passes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r_conv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">ConvPass</span><span class="p">(</span>
+                            <span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span><span class="o">**</span><span class="n">level</span>
+                            <span class="o">+</span> <span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span> <span class="o">**</span> <span class="p">(</span><span class="n">level</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="p">(</span>
+                                <span class="n">num_fmaps</span> <span class="o">*</span> <span class="n">fmap_inc_factor</span><span class="o">**</span><span class="n">level</span>
+                                <span class="k">if</span> <span class="n">num_fmaps_out</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">level</span> <span class="o">!=</span> <span class="mi">0</span>
+                                <span class="k">else</span> <span class="n">num_fmaps_out</span>
+                            <span class="p">),</span>
+                            <span class="n">kernel_size_up</span><span class="p">[</span><span class="n">level</span><span class="p">],</span>
+                            <span class="n">activation</span><span class="o">=</span><span class="n">activation</span><span class="p">,</span>
+                            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_heads</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="UNet.rec_forward">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.UNet.rec_forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">rec_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">f_in</span><span class="p">):</span>
+        <span class="c1"># index of level in layer arrays</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="n">level</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="c1"># convolve</span>
+        <span class="n">f_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_conv</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">f_in</span><span class="p">)</span>
+
+        <span class="c1"># end of recursion</span>
+        <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fs_out</span> <span class="o">=</span> <span class="p">[</span><span class="n">f_left</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># down</span>
+            <span class="n">g_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_down</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">f_left</span><span class="p">)</span>
+
+            <span class="c1"># nested levels</span>
+            <span class="n">gs_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rec_forward</span><span class="p">(</span><span class="n">level</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">g_in</span><span class="p">)</span>
+
+            <span class="c1"># up, concat, and crop</span>
+            <span class="n">fs_right</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">r_up</span><span class="p">[</span><span class="n">h</span><span class="p">][</span><span class="n">i</span><span class="p">](</span><span class="n">f_left</span><span class="p">,</span> <span class="n">gs_out</span><span class="p">[</span><span class="n">h</span><span class="p">])</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="c1"># convolve</span>
+            <span class="n">fs_out</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">r_conv</span><span class="p">[</span><span class="n">h</span><span class="p">][</span><span class="n">i</span><span class="p">](</span><span class="n">fs_right</span><span class="p">[</span><span class="n">h</span><span class="p">])</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span><span class="p">)]</span>
+
+        <span class="k">return</span> <span class="n">fs_out</span></div>
+
+
+<div class="viewcode-block" id="UNet.forward">
+<a class="viewcode-back" href="../../../../autoseg.models.unets.html#autoseg.models.unets.unet.UNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rec_forward</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_heads</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">y</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Anton &amp; Vijay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>
