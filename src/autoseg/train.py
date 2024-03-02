@@ -9,10 +9,10 @@ from einops import rearrange
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from models import ExampleModel
-from losses import WeightedMSELoss
-from datasets import GunpowderZarrDataset, Kh2015
-from config import read_config
+from autoseg.models import ExampleModel
+from autoseg.losses import WeightedMSELoss
+from autoseg.datasets import GunpowderZarrDataset, Kh2015
+from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
 
 pipeline = None
