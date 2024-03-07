@@ -17,6 +17,10 @@ from autoseg.losses import WeightedMSELoss
 from autoseg.datasets import GunpowderZarrDataset, Kh2015
 from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
+try:
+    mp.set_start_method("spawn")
+except RuntimeError:
+    pass
 
 pipeline = None
 
@@ -29,7 +33,6 @@ if WANDB_LOG:
 
 MULTI_GPU = True
 
-
 def ddp_setup(rank: int, world_size: int):
     """
     Args:
@@ -37,9 +40,9 @@ def ddp_setup(rank: int, world_size: int):
       world_size: Total number of processes
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12373"
-    init_process_group(backend="gloo", rank=rank, world_size=world_size)
-    # init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    os.environ["MASTER_PORT"] = "12310"
+    # init_process_group(backend="gloo", rank=rank, world_size=world_size)
+    init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
 
@@ -106,8 +109,8 @@ def train(
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        num_workers=5,
-        prefetch_factor=4,
+        num_workers=6,
+        prefetch_factor=5,
         collate_fn=collate,
         pin_memory=True,
         # sampler=DistributedSampler(dataset) if MULTI_GPU else None,
@@ -138,6 +141,7 @@ def train(
     print("Starting training")
     batch_iterator = iter(dataloader)
     for batch in batch_iterator:
+        print("loop")
         optimizer.zero_grad()
 
         _, loss = batch_predict(model, batch, crit)
@@ -229,7 +233,8 @@ def main(rank):
     print("Moved model to device")
 
     dataset = Kh2015(
-        transform=read_config("examples/no_augments")["pipeline"],
+        #transform=read_config("examples/no_augments")["pipeline"],
+        transform=read_config("defaults")["pipeline"],
         input_shape=(36, 212, 212),
         output_shape=(12, 120, 120),
     )
