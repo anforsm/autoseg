@@ -12,6 +12,8 @@ import torch.multiprocessing as mp
 from torch.utils.data.distributed import DistributedSampler
 from torch.distributed import init_process_group, destroy_process_group
 
+import zarr
+
 from autoseg.models import ExampleModel
 from autoseg.losses import WeightedMSELoss
 from autoseg.datasets import GunpowderZarrDataset, Kh2015
@@ -27,7 +29,7 @@ WANDB_LOG = False
 if WANDB_LOG:
     import wandb
 
-MULTI_GPU = True
+MULTI_GPU = False
 
 
 def ddp_setup(rank: int, world_size: int):
@@ -50,13 +52,13 @@ def get_2D_snapshot(raw, labels, affs, prediction):
     # labels: (B, C, Z, Y, X)
     z_label_i = labels.shape[-3] // 2
 
-    raw = raw[0, :, z_raw_i, :, :].cpu().numpy()
-    prediction = prediction[0, :, z_label_i, :, :].cpu().numpy()
-    affs = affs[0, :, z_label_i, :, :].cpu().numpy()
+    raw = raw[0, :, z_raw_i, :, :]
+    prediction = prediction[0, :, z_label_i, :, :]
+    affs = affs[0, :, z_label_i, :, :]
     labels = labels[z_label_i, :, :]
 
-    raw = rearrange(raw, "c h w -> h w c")
-    prediction = rearrange(prediction, "c h w -> h w c")
+    raw = rearrange(raw, "c h w -> h (w c)")  # only 1 channel
+    prediction = (rearrange(prediction, "c h w -> h w c") * 255).astype(np.uint8)
     affs = rearrange(affs, "c h w -> h w c")
 
     # create images
@@ -95,6 +97,35 @@ def batch_predict(model, batch, crit=None):
     return prediction
 
 
+def save_zarr_snapshot(dataset_prefix, filename, raw, labels, affs, prediction):
+    f = zarr.open(filename, "a")
+    num_spatial_dims = 3
+    raw = raw[0]
+    labels = labels[0]
+    affs = affs[0]
+    prediction = prediction[0]
+
+    print(raw)
+    raw += 1
+    raw /= 2
+    raw *= 255
+    print(raw)
+    print(np.max(raw), np.min(raw))
+    raw = raw.astype(np.uint8)
+    raw_shape = np.array(raw.shape)[1:]
+    label_shape = np.array(labels.shape)
+    diff = raw_shape - label_shape
+    offset = diff // 2
+    for name, array in zip(
+        ["raw", "labels", "affs", "prediction"], [raw, labels, affs, prediction]
+    ):
+        f[f"{dataset_prefix}/{name}"] = array
+        f[f"{dataset_prefix}/{name}"].attrs["resolution"] = [1, 1, 1]
+        f[f"{dataset_prefix}/{name}"].attrs["axis_names"] = ["c", "z", "y", "x"]
+        if name in ["labels", "affs", "prediction"]:
+            f[f"{dataset_prefix}/{name}"].attrs["offset"] = list(offset)
+
+
 def train(
     model,
     dataset,
@@ -130,7 +161,7 @@ def train(
             )
         )
 
-    val_log = 1000
+    val_log = 10
 
     avg_loss = 0
     lowest_val_loss = float("inf")
@@ -168,17 +199,38 @@ def train(
                 model.eval()
                 batch = next(batch_iterator)
                 raw, labels, affs, affs_weights = batch
-                loss, prediction = batch_predict(model, batch, crit)
+                prediction, loss = batch_predict(model, batch, crit)
+
                 raw_image, labels_image, affs_image, prediction_image = get_2D_snapshot(
-                    raw, labels, affs, prediction
+                    raw, labels, affs, prediction.cpu().numpy()
                 )
 
-                wandb.log(
-                    {
-                        "step": step,
-                        "snapshots": [raw_image, affs_image, prediction_image],
-                    }
+                save_zarr_snapshot(
+                    f"{step}",
+                    "out/snapshot.zarr",
+                    raw,
+                    labels,
+                    affs,
+                    prediction.cpu().numpy(),
                 )
+
+                if WANDB_LOG:
+                    wandb.log(
+                        {
+                            "step": step,
+                            "snapshots": [raw_image, affs_image, prediction_image],
+                        }
+                    )
+                else:
+                    if not raw_image.mode == "RGB":
+                        raw_image = raw_image.convert("RGB")
+                    if not affs_image.mode == "RGB":
+                        affs_image = affs_image.convert("RGB")
+                    if not prediction_image.mode == "RGB":
+                        prediction_image = prediction_image.convert("RGB")
+                    raw_image.save(f"out/images/raw_{step}.png")
+                    affs_image.save(f"out/images/affs_{step}.png")
+                    prediction_image.save(f"out/images/prediction_{step}.png")
 
                 if val_dataset is not None:
                     avg_loss = 0
