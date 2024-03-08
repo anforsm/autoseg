@@ -19,7 +19,7 @@ local trainconfig = import "autoseg/train";
     source: [
       [
         [zarrsource.zarr_source("SynapseWeb/kh2015/oblique")] + padconfig,
-        [zarrsource.zarr_source("SynapseWeb/kh2015/apical")] + padconfig,
+        [zarrsource.zarr_source("SynapseWeb/kh2015/spine")] + padconfig,
       ],
       {random_provider: {}}
     ],

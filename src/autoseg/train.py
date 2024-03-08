@@ -25,16 +25,10 @@ try:
 except RuntimeError:
     pass
 
-pipeline = None
+CONFIG_PATH = "examples/kh2015_multi"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
-
-WANDB_LOG = False
-if WANDB_LOG:
-    import wandb
-
-MULTI_GPU = False
 
 
 def ddp_setup(rank: int, world_size: int):
@@ -44,7 +38,7 @@ def ddp_setup(rank: int, world_size: int):
       world_size: Total number of processes
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12310"
+    os.environ["MASTER_PORT"] = "12312"
     # init_process_group(backend="gloo", rank=rank, world_size=world_size)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
@@ -133,22 +127,11 @@ def save_zarr_snapshot(dataset_prefix, filename, raw, labels, affs, prediction):
 
 def train(
     model,
-    dataset,
+    dataloader,
     val_dataset=None,
-    batch_size=1,
     learning_rate=1e-5,
     update_steps=1000,
 ):
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        # num_workers=6,
-        # prefetch_factor=5,
-        collate_fn=collate,
-        pin_memory=True,
-        # sampler=DistributedSampler(dataset) if MULTI_GPU else None,
-    )
-
     crit = WeightedMSELoss()
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -176,9 +159,7 @@ def train(
     for batch in batch_iterator:
         optimizer.zero_grad()
 
-        print("Doing prediction")
         _, loss = batch_predict(model, batch, crit)
-        print("Done prediction")
         loss.backward()
         optimizer.step()
         step += 1
@@ -264,10 +245,31 @@ def train(
             break
 
 
-def main(rank):
+def dataloader_from_config(dataset, config):
+    if config["parallel"]:
+        return DataLoader(
+            dataset=dataset,
+            collate_fn=collate,
+            batch_size=config["batch_size"],
+            num_workers=config["num_workers"],
+            prefetch_factor=config["precache_per_worker"],
+            pin_memory=True,
+        )
+    else:
+        return DataLoader(
+            dataset=dataset,
+            collate_fn=collate,
+            batch_size=config["batch_size"],
+            pin_memory=True,
+        )
+
+
+def main(rank, config):
+    global DEVICE, WANDB_LOG, MULTI_GPU
+    print(MULTI_GPU)
     if MULTI_GPU:
         ddp_setup(rank=rank, world_size=WORLD_SIZE)
-    global DEVICE, WANDB_LOG
+
     DEVICE = rank
     DEVICE = f"cuda:{DEVICE}"
 
@@ -276,6 +278,7 @@ def main(rank):
 
     if WANDB_LOG:
         wandb.init(project="autoseg")
+
     model = ExampleModel()
     model = model.to(DEVICE)
 
@@ -283,19 +286,30 @@ def main(rank):
         model = DDP(model, device_ids=[DEVICE])
 
     dataset = GunpowderZarrDataset(
-        config=read_config("examples/kh2015_multi")["pipeline"],
+        config=config["pipeline"],
         input_image_shape=(36, 212, 212),
         output_image_shape=(12, 120, 120),
     )
 
-    train(model, dataset, batch_size=8)
+    dataloader = dataloader_from_config(
+        dataset=dataset, config=config["training"]["train_dataloader"]
+    )
+
+    train(model, dataloader)
 
     if MULTI_GPU:
         destroy_process_group()
 
 
+config = read_config(CONFIG_PATH)
+MULTI_GPU = config["training"]["multi_gpu"]
+WANDB_LOG = config["training"]["logging"]["wandb"]
+
 if __name__ == "__main__":
+    if WANDB_LOG:
+        import wandb
+
     if MULTI_GPU:
-        mp.spawn(main, nprocs=WORLD_SIZE)
+        mp.spawn(main, args=(config,), nprocs=WORLD_SIZE)
     else:
-        main(rank=0)
+        main(rank=0, config=config)
