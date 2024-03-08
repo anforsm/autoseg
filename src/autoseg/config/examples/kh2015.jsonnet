@@ -46,6 +46,7 @@
       }},
       {random_location: {
         mask: labels_mask,
+        min_masked: 0.1
       }}
     ],
     normalize: [

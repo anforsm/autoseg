@@ -33,7 +33,7 @@ WANDB_LOG = False
 if WANDB_LOG:
     import wandb
 
-MULTI_GPU = False
+MULTI_GPU = True
 
 def ddp_setup(rank: int, world_size: int):
     """
@@ -95,7 +95,6 @@ def batch_predict(model, batch, crit=None):
     prediction = model(raw)
     if crit is not None:
         loss = crit(prediction, affs, affs_weights)
-        print(loss)
         return prediction, loss
 
     return prediction
@@ -141,8 +140,8 @@ def train(
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        #num_workers=6,
-        #prefetch_factor=5,
+        num_workers=6,
+        prefetch_factor=5,
         collate_fn=collate,
         pin_memory=True,
         # sampler=DistributedSampler(dataset) if MULTI_GPU else None,
@@ -165,7 +164,7 @@ def train(
             )
         )
 
-    val_log = 10
+    val_log = 10000
 
     avg_loss = 0
     lowest_val_loss = float("inf")
@@ -180,10 +179,11 @@ def train(
         optimizer.step()
         step += 1
 
-        print(
-            f"Step {step}/{update_steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
-            end="\r",
-        )
+        if not MULTI_GPU or DEVICE == "cuda:0":
+            print(
+                f"Step {step}/{update_steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
+                end="\r",
+            )
         if WANDB_LOG:
             wandb.log(
                 {
