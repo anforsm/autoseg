@@ -8,6 +8,7 @@ def get_curr_dir():
 
 
 def read_config(path=None):
+    # This lgoic defines how the config file is read within scripts
     if path is None or path == "defaults":
         path = get_curr_dir() + "configs/defaults.jsonnet"
     if path.startswith("examples/"):
@@ -20,6 +21,8 @@ def read_config(path=None):
         path = path + ".jsonnet"
 
     def cb(dir_, rel):
+        # This function defines how imports work inside
+        # of other jsonnet files
         if not rel.endswith(".jsonnet"):
             rel = rel + ".jsonnet"
 
