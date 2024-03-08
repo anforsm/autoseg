@@ -141,7 +141,6 @@ def train(
     print("Starting training")
     batch_iterator = iter(dataloader)
     for batch in batch_iterator:
-        print("loop")
         optimizer.zero_grad()
 
         _, loss = batch_predict(model, batch, crit)
@@ -151,7 +150,7 @@ def train(
 
         print(
             f"Step {step}/{update_steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
-            # end="\r",
+            end="\r",
         )
         if WANDB_LOG:
             wandb.log(
@@ -214,31 +213,23 @@ def main(rank):
     global DEVICE, WANDB_LOG
     DEVICE = rank
     DEVICE = f"cuda:{DEVICE}"
-    print("Using device", DEVICE)
 
     if MULTI_GPU:
         WANDB_LOG = WANDB_LOG and DEVICE == 0
 
     if WANDB_LOG:
         wandb.init(project="autoseg")
-    print("Instatiating model")
     model = ExampleModel()
-    # model = torch.nn.Linear(1, 1)
-    # model = torch.compile(model)
-    print("Moving model to", DEVICE)
     model = model.to(DEVICE)
-    print("Wrapping model in DDP")
+
     if MULTI_GPU:
         model = DDP(model, device_ids=[DEVICE])
-    print("Moved model to device")
 
     dataset = Kh2015(
-        #transform=read_config("examples/no_augments")["pipeline"],
         transform=read_config("defaults")["pipeline"],
         input_shape=(36, 212, 212),
         output_shape=(12, 120, 120),
     )
-    print("Loaded dataset")
 
     train(model, dataset, batch_size=8)
 

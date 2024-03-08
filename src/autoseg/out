@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/scratch/09699/anforsm/github/autoseg/src/autoseg/train.py", line 34, in <module>
-    MULTI_GPU = FAlse
-NameError: name 'FAlse' is not defined
