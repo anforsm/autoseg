@@ -47,6 +47,7 @@ class SmoothArray(gp.BatchFilter):
 
         batch[self.array].data = array
 
+
 class GunpowderZarrDataset(IterableDataset):
     def __init__(
         self,
@@ -61,14 +62,17 @@ class GunpowderZarrDataset(IterableDataset):
         self.gp_parser = GunpowderParser(config)
         self.pipeline = self.gp_parser.parse_config()
         self.voxel_size = gp.Coordinate([50, 2, 2])
-    
+
     def __iter__(self):
         return iter(self.request_batch(self.input_image_shape, self.output_image_shape))
-    
+
     def request_batch(self, input_image_shape, output_image_shape):
+        print("Got batch request")
         input_image_size = gp.Coordinate(input_image_shape) * self.voxel_size
         output_image_size = gp.Coordinate(output_image_shape) * self.voxel_size
+        print(self.pipeline)
         with gp.build(self.pipeline):
+            print("Built pipeline")
             while True:
                 request = gp.BatchRequest()
                 for ak in self.gp_parser.array_keys:
@@ -76,11 +80,13 @@ class GunpowderZarrDataset(IterableDataset):
                         request.add(ak, gp.Coordinate(input_image_size))
                     else:
                         request.add(ak, gp.Coordinate(output_image_size))
-                    
+
                 sample = self.pipeline.request_batch(request)
-                yield tuple(sample[self.gp_parser.array_keys[i]].data for i in range(len(self.gp_parser.array_keys)))
-                
-            
+                yield tuple(
+                    sample[self.gp_parser.array_keys[i]].data
+                    for i in range(len(self.gp_parser.array_keys))
+                )
+
 
 class GunpowderZarrDatasetOld(IterableDataset):
     def __init__(
@@ -156,7 +162,6 @@ class GunpowderZarrDatasetOld(IterableDataset):
         else:
             self.transform2 = None
 
-
         input_size = gp.Coordinate(input_shape) * self.voxel_size
         output_size = gp.Coordinate(output_shape) * self.voxel_size
 
@@ -166,9 +171,9 @@ class GunpowderZarrDatasetOld(IterableDataset):
             variables={
                 "voxel_size": self.voxel_size,
             }
-        )#.copy()
-        #print(gp.Normalize(self.raw))
-        #print(user_pipeline)
+        )  # .copy()
+        # print(gp.Normalize(self.raw))
+        # print(user_pipeline)
 
         pipeline = self.pre_pipeline
 
@@ -176,45 +181,45 @@ class GunpowderZarrDatasetOld(IterableDataset):
         pipeline += gp.Pad(self.labels, labels_padding)
         pipeline += gp.Pad(self.labels_mask, labels_padding)
         pipeline += gp.RandomLocation(mask=self.labels_mask, min_masked=0.1)
-        #pipeline += gp.Normalize(self.raw)
+        # pipeline += gp.Normalize(self.raw)
 
-        #if not user_pipeline is None:
+        # if not user_pipeline is None:
 
-        #user_pipeline = gp.Normalize(gp.ArrayKey("RAW"))
+        # user_pipeline = gp.Normalize(gp.ArrayKey("RAW"))
         pipeline += user_pipeline
 
-        #print(self.raw.hash)
-        #print(gp.ArrayKey("RAW").hash)
-        #print(self.raw == gp.ArrayKey("RAW"))
-        #self.raw = gp.ArrayKey("RAW")
+        # print(self.raw.hash)
+        # print(gp.ArrayKey("RAW").hash)
+        # print(self.raw == gp.ArrayKey("RAW"))
+        # self.raw = gp.ArrayKey("RAW")
 
-        #new_key = gp.ArrayKey("RAW")
-        #new_key.hash = self.raw.hash
-        #pipeline += gp.Normalize(self.raw)
+        # new_key = gp.ArrayKey("RAW")
+        # new_key.hash = self.raw.hash
+        # pipeline += gp.Normalize(self.raw)
 
-        #print(user_pipeline)
+        # print(user_pipeline)
 
         if not self.post_pipeline is None:
             pipeline += self.post_pipeline
 
-        #print("BEFORE BUILDING PIPELINE")
-        #print(pipeline)
+        # print("BEFORE BUILDING PIPELINE")
+        # print(pipeline)
         with gp.build(pipeline):
-            #print("AFTER BUILDING PIPELINE")
+            # print("AFTER BUILDING PIPELINE")
             while True:
                 request = gp.BatchRequest()
                 request.add(self.raw, input_size)
                 request.add(self.labels, output_size)
                 request.add(self.labels_mask, output_size)
 
-                #print(self.transform2.array_keys)
+                # print(self.transform2.array_keys)
                 for ak in list(self.transform2.array_keys):
                     if ak in [self.raw, self.labels, self.labels_mask]:
                         continue
                     request.add(ak, output_size)
 
                 sample = pipeline.request_batch(request)
-                #print("Yielded sample")
+                # print("Yielded sample")
                 yield (
                     sample[self.raw].data,
                     sample[self.labels].data,

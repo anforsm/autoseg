@@ -5,9 +5,11 @@ from functools import cmp_to_key
 
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 
+
 def snake_case_to_camel_case(snake_str):
     components = snake_str.split("_")
     return components[0].title() + "".join(x.title() for x in components[1:])
+
 
 class GunpowderParser:
     def __init__(self, config):
@@ -35,11 +37,77 @@ class GunpowderParser:
         """
         self.config = config
         self._array_keys = set()
-    
+
     @property
     def array_keys(self):
         return list(sorted(list(self._array_keys), key=lambda ak: ak.identifier))
-    
+
+    def flatten_nodes(self, nodes):  # -> Union[gp.Pipeline, Tuple[gp.Pipeline]]:
+        """Flatten a list of nodes.
+
+        If it is a list of nodes or tuples, combine them into a pipeline
+        If it is a list of pipelines, convert them into a tuple of pipelines
+        """
+        # Case of a single node
+        if isinstance(nodes, gp.BatchProvider):
+            return nodes
+
+        # Base case, start adding nodes to a pipeline
+        if isinstance(nodes[0], gp.BatchProvider) or isinstance(nodes[0], tuple):
+            pipeline = None
+            for node in nodes:
+                if pipeline is None:
+                    pipeline = node
+                else:
+                    pipeline += node
+            return pipeline
+
+        if isinstance(nodes[0], list):
+            return tuple([self.flatten_nodes(node) for node in nodes])
+
+        # Case of flattening a single node
+        # if not isinstance(nodes, list):
+        #     print("Returning single node", nodes)
+        #     return nodes
+
+        # if isinstance(nodes[0], gp.Pipeline):
+        #     print("Returning tuple of pipelines")
+        #     return tuple(nodes)
+
+        # if isinstance(nodes[0], list):
+        #     nodes = [self.flatten_nodes(node) for node in nodes]
+
+        # pipeline = None
+        # for node in nodes:
+        #     if pipeline is None:
+        #         pipeline = node
+        #     else:
+        #         pipeline += node
+        # return pipeline
+
+        # if isinstance(nodes[0], gp.Pipeline):
+        #    print("Returning tuple of pipelines")
+        #    print(nodes)
+        #    return tuple(nodes)
+
+        # pipeline = None
+        # if isinstance(nodes[0], list):
+        #    nodes = [self.flatten_nodes(node) for node in nodes]
+
+        # for node in nodes:
+        #    if isinstance(node, list):
+        #        node = self.flatten_nodes(node)
+
+        #    if pipeline is None:
+        #        pipeline = node
+        #    else:
+        #        pipeline += node
+
+        # print("Created pipeline")
+        # print(isinstance(pipeline, gp.Pipeline))
+        # print(type(pipeline))
+        # print(pipeline)
+        # return pipeline
 
     def parse_config(self):
         config = self.config
@@ -51,36 +119,35 @@ class GunpowderParser:
                 continue
             for gp_collection in config[source_name]:
                 collection = self.parse_gp_collection(gp_collection)
-                self.nodes += collection
+                self.nodes.append(collection)
+
+        flattened_nodes = self.flatten_nodes(self.nodes)
+
+        if isinstance(flattened_nodes, gp.Pipeline):
+            return flattened_nodes
 
         pipeline = None
-        for node in self.nodes:
+        for node in flattened_nodes:
             if pipeline is None:
                 pipeline = node
             else:
                 pipeline += node
-
         return pipeline
 
     def parse_gp_collection(self, gp_collection):
-        nodes = []
         if isinstance(gp_collection, list):
+            nodes = []
             for gp_collection2 in gp_collection:
                 nodes.append(self.parse_gp_collection(gp_collection2))
-            print(nodes)
+            return nodes
         else:
-            nodes.append(self.parse_node(gp_collection))
-        return nodes
+            return self.parse_node(gp_collection)
 
     def parse_node(self, node):
         if isinstance(node, str) and node.isupper():
-            return self.parse_node(
-                {"array_key": {"identifier": node}}
-            )
+            return self.parse_node({"array_key": {"identifier": node}})
         elif isinstance(node, str) and node[0] == "_":
-            return self.parse_node(
-                {"array_key": {"identifier": node[1:].upper()}}
-            )
+            return self.parse_node({"array_key": {"identifier": node[1:].upper()}})
         elif isinstance(node, dict):
             node_name, node_args = list(node.items())[0]
             node_name = snake_case_to_camel_case(node_name)
@@ -90,16 +157,22 @@ class GunpowderParser:
             if node_name == "ArrayKey":
                 # otherwise we get infinite recursion
                 # ArrayKey only takes one arg which is the identifier (a string)
-                # thus we know we dont have to further parse the 
+                # thus we know we dont have to further parse the
                 # node args
                 kwargs = node_args
             else:
                 kwargs = self.parse_node_args(node_args)
-            
+
             if node_name == "ZarrSource":
                 download_dataset(kwargs["store"])
                 kwargs["store"] = get_dataset_path(kwargs["store"])
-                
+
+                # self.sources.add()
+
+            if node_name == "Pad":
+                if "pad" in kwargs and kwargs["pad"] is not None:
+                    kwargs["pad"] = gp.Coordinate(kwargs["pad"])
+
             node = getattr(gp, node_name)(**kwargs)
 
             if node_name == "ArrayKey":

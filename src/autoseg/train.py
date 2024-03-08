@@ -19,6 +19,7 @@ from autoseg.losses import WeightedMSELoss
 from autoseg.datasets import GunpowderZarrDataset, Kh2015
 from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
+
 try:
     mp.set_start_method("spawn")
 except RuntimeError:
@@ -33,7 +34,8 @@ WANDB_LOG = False
 if WANDB_LOG:
     import wandb
 
-MULTI_GPU = True
+MULTI_GPU = False
+
 
 def ddp_setup(rank: int, world_size: int):
     """
@@ -85,7 +87,7 @@ def batch_predict(model, batch, crit=None):
         prediction: torch.Tensor
         loss: torch.Tensor
     """
-    #raw, labels, affs, affs_weights = batch
+    # raw, labels, affs, affs_weights = batch
     affs_weights, affs, _, labels, _, raw = batch
     raw = torch.tensor(raw.copy()).to(DEVICE)
     # raw: (B, C, Z, Y, X)
@@ -140,8 +142,8 @@ def train(
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        num_workers=6,
-        prefetch_factor=5,
+        # num_workers=6,
+        # prefetch_factor=5,
         collate_fn=collate,
         pin_memory=True,
         # sampler=DistributedSampler(dataset) if MULTI_GPU else None,
@@ -174,7 +176,9 @@ def train(
     for batch in batch_iterator:
         optimizer.zero_grad()
 
+        print("Doing prediction")
         _, loss = batch_predict(model, batch, crit)
+        print("Done prediction")
         loss.backward()
         optimizer.step()
         step += 1
@@ -279,7 +283,7 @@ def main(rank):
         model = DDP(model, device_ids=[DEVICE])
 
     dataset = GunpowderZarrDataset(
-        config=read_config("examples/kh2015")["pipeline"],
+        config=read_config("examples/kh2015_multi")["pipeline"],
         input_image_shape=(36, 212, 212),
         output_image_shape=(12, 120, 120),
     )
