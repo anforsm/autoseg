@@ -25,7 +25,7 @@ try:
 except RuntimeError:
     pass
 
-CONFIG_PATH = "examples/kh2015_multisource"
+CONFIG_PATH = "examples/kh2015"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
