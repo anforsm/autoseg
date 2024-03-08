@@ -1,5 +1,5 @@
 import torch
-from unet import UNet, ConvPass
+from .unets import UNet, ConvPass
 
 
 class ExampleModel(torch.nn.Module):
