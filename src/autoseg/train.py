@@ -85,7 +85,8 @@ def batch_predict(model, batch, crit=None):
         prediction: torch.Tensor
         loss: torch.Tensor
     """
-    raw, labels, affs, affs_weights = batch
+    #raw, labels, affs, affs_weights = batch
+    affs_weights, affs, _, labels, _, raw = batch
     raw = torch.tensor(raw.copy()).to(DEVICE)
     # raw: (B, C, Z, Y, X)
     affs = torch.tensor(affs.copy()).to(torch.float32).to(DEVICE)
@@ -140,8 +141,8 @@ def train(
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
-        num_workers=6,
-        prefetch_factor=5,
+        #num_workers=6,
+        #prefetch_factor=5,
         collate_fn=collate,
         pin_memory=True,
         # sampler=DistributedSampler(dataset) if MULTI_GPU else None,
@@ -277,10 +278,10 @@ def main(rank):
     if MULTI_GPU:
         model = DDP(model, device_ids=[DEVICE])
 
-    dataset = Kh2015(
-        transform=read_config("defaults")["pipeline"],
-        input_shape=(36, 212, 212),
-        output_shape=(12, 120, 120),
+    dataset = GunpowderZarrDataset(
+        config=read_config("examples/kh2015")["pipeline"],
+        input_image_shape=(36, 212, 212),
+        output_image_shape=(12, 120, 120),
     )
 
     train(model, dataset, batch_size=8)

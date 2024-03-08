@@ -1,9 +1,7 @@
 from pathlib import Path
 import os
-import fsspec
 
 ROOT_PATH = Path.home() / Path(".cache/autoseg/datasets/")
-ROOT_PATH = Path("/scratch/09699/anforsm/github/autoseg/data/")
 
 
 def get_synapseweb_dataset_names(dataset):
@@ -31,7 +29,7 @@ def download_dataset(dataset="SynapseWeb/kh2015/oblique", force=False):
             repo_id=repo_id,
             filename=filename,
             repo_type="dataset",
-            local_dir=Path(ROOT_PATH / Path(repo_id).as_posix().replace(".zip", "")),
+            local_dir=Path(ROOT_PATH / Path(repo_id).as_posix()),
             local_dir_use_symlinks=False,
         )
     else:
@@ -40,7 +38,7 @@ def download_dataset(dataset="SynapseWeb/kh2015/oblique", force=False):
 
 def get_dataset_path(dataset="SynapseWeb/kh2015/oblique"):
     repo_id, _, filename = get_synapseweb_dataset_names(dataset)
-    return ROOT_PATH / Path(repo_id) / Path(filename.replace(".zip", ""))
+    return ROOT_PATH / Path(repo_id) / Path(filename)
 
 
 def dataset_exists(dataset="SynapseWeb/kh2015/oblique"):
