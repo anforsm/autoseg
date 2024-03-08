@@ -9,7 +9,6 @@ from scipy.ndimage import gaussian_filter
 import random
 
 from .load_dataset import download_dataset, get_dataset_path
-from autoseg.transforms import PreprocessingPipeline
 from autoseg.transforms.gp_parser import GunpowderParser
 
 

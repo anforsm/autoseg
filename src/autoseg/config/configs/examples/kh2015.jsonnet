@@ -24,7 +24,7 @@
         },
         array_specs: {
           _raw: interpolatable_array_spec,
-          _labels: non_interpolatable_array_spec,  
+          _labels: non_interpolatable_array_spec,
           _labels_mask: non_interpolatable_array_spec,
         },
       }},

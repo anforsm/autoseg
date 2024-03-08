@@ -9,9 +9,13 @@ def get_curr_dir():
 
 def read_config(path=None):
     if path is None or path == "defaults":
-        path = get_curr_dir() + "/defaults.jsonnet"
+        path = get_curr_dir() + "configs/defaults.jsonnet"
     if path.startswith("examples/"):
-        path = get_curr_dir() + "/" + path
+        path = get_curr_dir() + "/configs/" + path
+
+    if path.endswith(".json"):
+        path = path.replace(".json", ".jsonnet")
+
     if not path.endswith(".jsonnet"):
         path = path + ".jsonnet"
 
@@ -20,7 +24,7 @@ def read_config(path=None):
             rel = rel + ".jsonnet"
 
         if rel.startswith("autoseg"):
-            new_dir = os.path.join(get_curr_dir(), rel.replace("autoseg/", ""))
+            new_dir = os.path.join(get_curr_dir(), rel.replace("autoseg/", "configs/"))
             with open(new_dir, "r") as f:
                 content = f.read().encode()
             return new_dir, content

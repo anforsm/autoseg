@@ -16,7 +16,7 @@ import zarr
 
 from autoseg.models import ExampleModel
 from autoseg.losses import WeightedMSELoss
-from autoseg.datasets import GunpowderZarrDataset, Kh2015
+from autoseg.datasets import GunpowderZarrDataset
 from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
 
@@ -25,7 +25,7 @@ try:
 except RuntimeError:
     pass
 
-CONFIG_PATH = "examples/kh2015_multi"
+CONFIG_PATH = "examples/kh2015_multisource"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
