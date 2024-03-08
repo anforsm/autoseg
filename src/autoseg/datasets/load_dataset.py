@@ -1,7 +1,10 @@
 from pathlib import Path
 import os
 
-ROOT_PATH = Path.home() / Path(".cache/autoseg/datasets/")
+if not "AUTOSEG_CACHE" in os.environ:
+    ROOT_PATH = Path.home() / Path(".cache/autoseg/datasets/")
+else:
+    ROOT_PATH = Path(os.environ["AUTOSEG_CACHE"]) / Path("datasets/")
 
 
 def get_synapseweb_dataset_names(dataset):

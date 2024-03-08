@@ -3,7 +3,7 @@ from typing import Dict, List, Union
 import json
 from functools import cmp_to_key
 
-from autoseg.datasets.load_dataset import get_dataset_path
+from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 
 def snake_case_to_camel_case(snake_str):
     components = snake_str.split("_")
@@ -97,6 +97,7 @@ class GunpowderParser:
                 kwargs = self.parse_node_args(node_args)
             
             if node_name == "ZarrSource":
+                download_dataset(kwargs["store"])
                 kwargs["store"] = get_dataset_path(kwargs["store"])
                 
             node = getattr(gp, node_name)(**kwargs)
