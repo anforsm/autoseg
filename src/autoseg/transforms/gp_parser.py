@@ -4,6 +4,7 @@ import json
 from functools import cmp_to_key
 
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
+import autoseg.transforms.gp_nodes as cgp
 
 
 def snake_case_to_camel_case(snake_str):
@@ -173,7 +174,7 @@ class GunpowderParser:
                 if "pad" in kwargs and kwargs["pad"] is not None:
                     kwargs["pad"] = gp.Coordinate(kwargs["pad"])
 
-            node = getattr(gp, node_name)(**kwargs)
+            node = self.get_node(node_name)(**kwargs)
 
             if node_name == "ArrayKey":
                 self._array_keys.add(node)
@@ -216,4 +217,10 @@ class GunpowderParser:
 
     def is_gunpowder_node_name(self, node_name):
         node_name = snake_case_to_camel_case(node_name)
-        return hasattr(gp, node_name)
+        return hasattr(cgp, node_name) or hasattr(gp, node_name)
+
+    def get_node(self, node_name):
+        if hasattr(cgp, node_name):
+            return getattr(cgp, node_name)
+        else:
+            return getattr(gp, node_name)

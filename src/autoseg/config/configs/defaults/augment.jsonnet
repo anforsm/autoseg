@@ -20,6 +20,9 @@
     shift_min: -0.1,
     shift_max: 0.1
   }},
+  {smooth_array: {
+    array: "RAW"
+  }},
   {grow_boundary: {
     labels: "LABELS",
     only_xy: true,
