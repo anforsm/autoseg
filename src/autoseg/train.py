@@ -149,7 +149,7 @@ def train(
             )
         )
 
-    val_log = 10000
+    val_log = 10
 
     avg_loss = 0
     lowest_val_loss = float("inf")
@@ -184,10 +184,11 @@ def train(
                 torch.save(model.module.state_dict(), "out/latest_model3.pt")
             else:
                 torch.save(model.state_dict(), "out/latest_model3.pt")
+            continue
             with torch.no_grad():
                 model.eval()
                 batch = next(batch_iterator)
-                raw, labels, affs, affs_weights = batch
+                affs_weights, affs, _, labels, _, raw = batch
                 prediction, loss = batch_predict(model, batch, crit)
 
                 raw_image, labels_image, affs_image, prediction_image = get_2D_snapshot(
@@ -287,8 +288,8 @@ def main(rank, config):
 
     dataset = GunpowderZarrDataset(
         config=config["pipeline"],
-        input_image_shape=(36, 212, 212),
-        output_image_shape=(12, 120, 120),
+        input_image_shape=config["training"]["train_dataloader"]["input_image_shape"],
+        output_image_shape=config["training"]["train_dataloader"]["output_image_shape"],
     )
 
     dataloader = dataloader_from_config(

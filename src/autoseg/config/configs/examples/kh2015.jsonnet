@@ -2,6 +2,7 @@
 local train_config = import "autoseg/defaults/train";
 local augment = import "autoseg/defaults/augment";
 local affs_target = import "autoseg/defaults/affs_target";
+local predict = import "autoseg/defaults/predict";
 
 {
   pipeline: {
@@ -22,4 +23,4 @@ local affs_target = import "autoseg/defaults/affs_target";
 
   } + augment + affs_target
 
-} + train_config
+} + train_config + predict
