@@ -132,7 +132,7 @@ def predict_zarr(
     output_image_shape = Coordinate(output_image_shape)
 
     # voxel_size = Coordinate([50, 2, 2])
-    voxel_size = Coordinate([2, 2])
+    voxel_size = input_zarr.attrs["resolution"]
 
     input_image_size = input_image_shape * voxel_size
     output_image_size = output_image_shape * voxel_size

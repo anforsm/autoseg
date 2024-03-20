@@ -9,6 +9,7 @@ from scipy.ndimage import gaussian_filter
 import random
 
 from .load_dataset import download_dataset, get_dataset_path
+from .utils.zarr_utils import get_voxel_size
 from autoseg.transforms.gp_parser import GunpowderParser
 
 
@@ -38,8 +39,7 @@ class GunpowderZarrDataset(IterableDataset):
 
         self.gp_parser = GunpowderParser(config)
         self.pipeline = self.gp_parser.parse_config()
-        # self.voxel_size = gp.Coordinate([50, 2, 2])
-        self.voxel_size = gp.Coordinate([2, 2])
+        self.voxel_size = gp.Coordinate(self.gp_parser.voxel_size)
 
     def __iter__(self):
         return iter(self.request_batch(self.input_image_shape, self.output_image_shape))
@@ -47,7 +47,6 @@ class GunpowderZarrDataset(IterableDataset):
     def request_batch(self, input_image_shape, output_image_shape):
         input_image_size = gp.Coordinate(input_image_shape) * self.voxel_size
         output_image_size = gp.Coordinate(output_image_shape) * self.voxel_size
-        print(self.pipeline)
         with gp.build(self.pipeline):
             while True:
                 request = gp.BatchRequest()

@@ -4,6 +4,7 @@ import json
 from functools import cmp_to_key
 
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
+from autoseg.datasets.utils.zarr_utils import get_voxel_size
 import autoseg.transforms.gp_nodes as cgp
 
 
@@ -38,6 +39,11 @@ class GunpowderParser:
         """
         self.config = config
         self._array_keys = set()
+        self.voxel_sizes = []
+
+    @property
+    def voxel_size(self):
+        return self.voxel_sizes[0]
 
     @property
     def array_keys(self):
@@ -167,6 +173,15 @@ class GunpowderParser:
             if node_name == "ZarrSource":
                 download_dataset(kwargs["store"])
                 kwargs["store"] = get_dataset_path(kwargs["store"])
+
+                for dataset in kwargs["datasets"].values():
+                    path = kwargs["store"].as_posix() + "/" + dataset
+                    self.voxel_sizes.append(get_voxel_size(path))
+                if not all(self.voxel_sizes[0] == i for i in self.voxel_sizes):
+                    print(
+                        "WARNING: Voxel sizes are not the same for all datasets. Using",
+                        self.voxel_sizes[0],
+                    )
 
                 # self.sources.add()
 
