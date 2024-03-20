@@ -353,7 +353,10 @@ class UNet(torch.nn.Module):
                         Upsample(
                             downsample_factors[level],
                             mode=(
-                                "trilinear" if constant_upsample else "transposed_conv"
+                                "bilinear"
+                                if constant_upsample
+                                else "transposed_conv"
+                                # "trilinear" if constant_upsample else "transposed_conv"
                             ),
                             in_channels=num_fmaps * fmap_inc_factor ** (level + 1),
                             out_channels=num_fmaps * fmap_inc_factor ** (level + 1),

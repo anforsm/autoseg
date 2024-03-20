@@ -40,6 +40,8 @@ def download_dataset(dataset="SynapseWeb/kh2015/oblique", force=False):
 
 
 def get_dataset_path(dataset="SynapseWeb/kh2015/oblique"):
+    if not dataset.startswith("SynapseWeb"):
+        return Path(dataset)
     repo_id, _, filename = get_synapseweb_dataset_names(dataset)
     return ROOT_PATH / Path(repo_id) / Path(filename)
 

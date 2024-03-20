@@ -38,7 +38,8 @@ class GunpowderZarrDataset(IterableDataset):
 
         self.gp_parser = GunpowderParser(config)
         self.pipeline = self.gp_parser.parse_config()
-        self.voxel_size = gp.Coordinate([50, 2, 2])
+        # self.voxel_size = gp.Coordinate([50, 2, 2])
+        self.voxel_size = gp.Coordinate([2, 2])
 
     def __iter__(self):
         return iter(self.request_batch(self.input_image_shape, self.output_image_shape))

@@ -14,7 +14,7 @@ from torch.distributed import init_process_group, destroy_process_group
 
 import zarr
 
-from autoseg.models import ExampleModel
+from autoseg.models import ExampleModel, ExampleModel2D
 from autoseg.losses import WeightedMSELoss
 from autoseg.datasets import GunpowderZarrDataset
 from autoseg.config import read_config
@@ -25,7 +25,8 @@ try:
 except RuntimeError:
     pass
 
-CONFIG_PATH = "examples/kh2015_multisource"
+# CONFIG_PATH = "examples/kh2015_multisource"
+CONFIG_PATH = "examples/2d_multisource"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
@@ -280,7 +281,7 @@ def main(rank, config):
     if WANDB_LOG:
         wandb.init(project="autoseg")
 
-    model = ExampleModel()
+    model = ExampleModel2D()
     model = model.to(DEVICE)
 
     if MULTI_GPU:
