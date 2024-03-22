@@ -175,8 +175,9 @@ class GunpowderParser:
                 kwargs["store"] = get_dataset_path(kwargs["store"])
 
                 for dataset in kwargs["datasets"].values():
-                    path = kwargs["store"].as_posix() + "/" + dataset
-                    self.voxel_sizes.append(get_voxel_size(path))
+                    self.voxel_sizes.append(
+                        get_voxel_size(path=kwargs["store"].as_posix(), ds=dataset)
+                    )
                 if not all(self.voxel_sizes[0] == i for i in self.voxel_sizes):
                     print(
                         "WARNING: Voxel sizes are not the same for all datasets. Using",

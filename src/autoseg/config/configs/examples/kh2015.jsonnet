@@ -4,6 +4,8 @@ local predict = import "autoseg/defaults/predict";
 local augment = import "autoseg/defaults/augment";
 local affs_target = import "autoseg/defaults/affs_target";
 
+local model = import "autoseg/defaults/3d_model";
+
 {
   pipeline: {
     local pad = import "autoseg/defaults/pad",
@@ -23,4 +25,4 @@ local affs_target = import "autoseg/defaults/affs_target";
 
   } + augment + affs_target
 
-} + train_config + predict
+} + train_config + predict + model

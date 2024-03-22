@@ -14,7 +14,7 @@ from torch.distributed import init_process_group, destroy_process_group
 
 import zarr
 
-from autoseg.models import ExampleModel, ExampleModel2D
+from autoseg.models import ExampleModel, ExampleModel2D, ConfigurableUNet, Model
 from autoseg.losses import WeightedMSELoss
 from autoseg.datasets import GunpowderZarrDataset
 from autoseg.config import read_config
@@ -25,8 +25,8 @@ try:
 except RuntimeError:
     pass
 
-# CONFIG_PATH = "examples/kh2015_multisource"
-CONFIG_PATH = "examples/2d_multisource"
+CONFIG_PATH = "examples/kh2015_multisource"
+# CONFIG_PATH = "examples/2d_multisource"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
@@ -150,7 +150,8 @@ def train(
             )
         )
 
-    val_log = 10
+    val_log = 10_000
+    save_every = 10
 
     avg_loss = 0
     lowest_val_loss = float("inf")
@@ -165,11 +166,14 @@ def train(
         optimizer.step()
         step += 1
 
+        # Log training loss in console
         if not MULTI_GPU or DEVICE == "cuda:0":
             print(
                 f"Step {step}/{update_steps}, loss: {loss.item():.4f}, val: {avg_loss:.4f}",
                 end="\r",
             )
+
+        # Log training loss in wandb
         if WANDB_LOG:
             wandb.log(
                 {
@@ -180,12 +184,15 @@ def train(
                 }
             )
 
-        if step % val_log == 0:
+        # Save model
+        if step % save_every == 0:
             if MULTI_GPU:
-                torch.save(model.module.state_dict(), "out/latest_model3.pt")
+                model.save()
             else:
-                torch.save(model.state_dict(), "out/latest_model3.pt")
-            continue
+                model.save()
+
+        # Log validation and snapshots
+        if step % val_log == 0:
             with torch.no_grad():
                 model.eval()
                 batch = next(batch_iterator)
@@ -243,6 +250,7 @@ def train(
 
                 model.train()
 
+        # End training
         if step >= update_steps:
             break
 
@@ -281,7 +289,7 @@ def main(rank, config):
     if WANDB_LOG:
         wandb.init(project="autoseg")
 
-    model = ExampleModel2D()
+    model = Model(config)
     model = model.to(DEVICE)
 
     if MULTI_GPU:
