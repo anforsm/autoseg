@@ -39,6 +39,7 @@ class GunpowderParser:
         """
         self.config = config
         self._array_keys = set()
+        self.output_array_keys = []
         self.voxel_sizes = []
 
     @property
@@ -120,6 +121,8 @@ class GunpowderParser:
         config = self.config
         self.nodes = []
         source_names = config["_order"]
+        self.output_array_keys = [self.parse_node(ak) for ak in config["_outputs"]]
+
         for source_name in source_names:
             if not source_name in config:
                 print(f"WARN: {source_name} not in config")

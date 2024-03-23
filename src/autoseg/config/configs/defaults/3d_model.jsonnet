@@ -5,7 +5,7 @@
     hf_path: "anforsm/3DEM",
     hyperparameters: {
       in_channels: 1,
-      output_shapes: [3],
+      output_shapes: [10, 3],
       fmap_inc_factor: 5,
       downsample_factors: [[1, 2, 2], [1, 2, 2], [2, 2, 2]],
       kernel_size_down: [

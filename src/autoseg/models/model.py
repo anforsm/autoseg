@@ -4,6 +4,10 @@ from .configurable_unet import ConfigurableUNet
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
 
+from autoseg.datasets.load_dataset import ROOT_PATH
+
+MODELS_PATH = ROOT_PATH / "models"
+
 # Should use https://huggingface.co/docs/transformers/v4.39.0/en/main_classes/model#transformers.PreTrainedModel
 
 
@@ -47,10 +51,10 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
                 pass
 
     def load_from_hf(self):
-        self.load_from_hub(self.hf_path)
+        self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
-        self.from_pretrained(self.path)
+        self.from_pretrained(Path(self.path))
 
     def forward(self, input_):
         return self.model(input_)

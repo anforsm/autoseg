@@ -1,6 +1,7 @@
 import os
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import numpy as np
@@ -15,10 +16,11 @@ from torch.distributed import init_process_group, destroy_process_group
 import zarr
 
 from autoseg.models import ExampleModel, ExampleModel2D, ConfigurableUNet, Model
-from autoseg.losses import WeightedMSELoss
+import autoseg.losses as losses
 from autoseg.datasets import GunpowderZarrDataset
 from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
+from autoseg.transforms.gp_parser import snake_case_to_camel_case
 
 try:
     mp.set_start_method("spawn")
@@ -70,7 +72,15 @@ def get_2D_snapshot(raw, labels, affs, prediction):
     )
 
 
-def batch_predict(model, batch, crit=None):
+def batch_predict(
+    model,
+    batch,
+    model_inputs,
+    model_outputs,
+    batch_outputs,
+    crit=None,
+    loss_inputs=None,
+):
     """Predict on a batch and calculate loss if crit is provided.
 
     Args:
@@ -83,18 +93,35 @@ def batch_predict(model, batch, crit=None):
         loss: torch.Tensor
     """
     # raw, labels, affs, affs_weights = batch
-    affs_weights, affs, _, labels, _, raw = batch
-    raw = torch.tensor(raw.copy()).to(DEVICE)
+
+    batch = [
+        torch.tensor(x).to(torch.float32).to(DEVICE) if not x.dtype == np.uint64 else x
+        for x in batch
+    ]
+    batch_outputs = {
+        output_name: output for output_name, output in zip(batch_outputs, batch)
+    }
+
     # raw: (B, C, Z, Y, X)
-    affs = torch.tensor(affs.copy()).to(torch.float32).to(DEVICE)
-    affs_weights = torch.tensor(affs_weights.copy()).to(torch.float32).to(DEVICE)
 
-    prediction = model(raw)
-    if crit is not None:
-        loss = crit(prediction, affs, affs_weights)
-        return prediction, loss
+    # in case of multiple inputs to the model
+    # we concatenate them along the channel dimension
+    inp = torch.cat(tuple(batch_outputs[name] for name in model_inputs), dim=1)
+    prediction = model(inp)
 
-    return prediction
+    if not isinstance(prediction, list):
+        prediction = [prediction]
+
+    model_outputs = {
+        output_name: output for output_name, output in zip(model_outputs, prediction)
+    }
+
+    if crit is not None and loss_inputs is not None:
+        vars_ = {**model_outputs, **batch_outputs}
+        loss = crit(*[vars_[name] for name in loss_inputs])
+        return model_outputs, loss
+
+    return model_outputs
 
 
 def save_zarr_snapshot(dataset_prefix, filename, raw, labels, affs, prediction):
@@ -129,11 +156,15 @@ def save_zarr_snapshot(dataset_prefix, filename, raw, labels, affs, prediction):
 def train(
     model,
     dataloader,
+    crit,
+    batch_outputs,
+    model_inputs,
+    model_outputs,
+    loss_inputs,
     val_dataset=None,
     learning_rate=1e-5,
     update_steps=1000,
 ):
-    crit = WeightedMSELoss()
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -161,7 +192,9 @@ def train(
     for batch in batch_iterator:
         optimizer.zero_grad()
 
-        _, loss = batch_predict(model, batch, crit)
+        _, loss = batch_predict(
+            model, batch, model_inputs, model_outputs, batch_outputs, crit, loss_inputs
+        )
         loss.backward()
         optimizer.step()
         step += 1
@@ -276,7 +309,18 @@ def dataloader_from_config(dataset, config):
 
 def main(rank, config):
     global DEVICE, WANDB_LOG, MULTI_GPU
-    print(MULTI_GPU)
+
+    loss_name = list(
+        filter(lambda x: not x.startswith("_"), config["training"]["loss"].keys())
+    )[0]
+    loss_name_cls = snake_case_to_camel_case(loss_name)
+    if hasattr(losses, loss_name_cls):
+        crit = getattr(losses, loss_name_cls)
+    else:
+        crit = getattr(nn, loss_name)
+
+    crit = crit(**config["training"]["loss"][loss_name])
+
     if MULTI_GPU:
         ddp_setup(rank=rank, world_size=WORLD_SIZE)
 
@@ -305,7 +349,20 @@ def main(rank, config):
         dataset=dataset, config=config["training"]["train_dataloader"]
     )
 
-    train(model, dataloader)
+    batch_outputs = config["training"]["batch_outputs"]
+    model_outputs = config["training"]["model_outputs"]
+    model_inputs = config["training"]["model_inputs"]
+    loss_inputs = config["training"]["loss"]["_inputs"]
+
+    train(
+        model=model,
+        dataloader=dataloader,
+        crit=crit,
+        batch_outputs=batch_outputs,
+        model_outputs=model_outputs,
+        model_inputs=model_inputs,
+        loss_inputs=loss_inputs,
+    )
 
     if MULTI_GPU:
         destroy_process_group()

@@ -36,12 +36,14 @@ class ConfigurableUNet(torch.nn.Module):
             num_heads=1,
         )
 
-        self.aff_head = ConvPass(
-            num_fmaps, output_shapes[0], [[1, 1, 1]], activation="Sigmoid"
+        self.heads = torch.nn.ModuleList(
+            [
+                ConvPass(num_fmaps, shape, [[1, 1, 1]], activation="Sigmoid")
+                for shape in output_shapes
+            ]
         )
 
     def forward(self, input):
         z = self.unet(input)
-        affs = self.aff_head(z)
 
-        return affs
+        return tuple(head(z) for head in self.heads)
