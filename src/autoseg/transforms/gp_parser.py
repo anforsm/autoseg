@@ -73,50 +73,6 @@ class GunpowderParser:
         if isinstance(nodes[0], list):
             return tuple([self.flatten_nodes(node) for node in nodes])
 
-        # Case of flattening a single node
-        # if not isinstance(nodes, list):
-        #     print("Returning single node", nodes)
-        #     return nodes
-
-        # if isinstance(nodes[0], gp.Pipeline):
-        #     print("Returning tuple of pipelines")
-        #     return tuple(nodes)
-
-        # if isinstance(nodes[0], list):
-        #     nodes = [self.flatten_nodes(node) for node in nodes]
-
-        # pipeline = None
-        # for node in nodes:
-        #     if pipeline is None:
-        #         pipeline = node
-        #     else:
-        #         pipeline += node
-        # return pipeline
-
-        # if isinstance(nodes[0], gp.Pipeline):
-        #    print("Returning tuple of pipelines")
-        #    print(nodes)
-        #    return tuple(nodes)
-
-        # pipeline = None
-        # if isinstance(nodes[0], list):
-        #    nodes = [self.flatten_nodes(node) for node in nodes]
-
-        # for node in nodes:
-        #    if isinstance(node, list):
-        #        node = self.flatten_nodes(node)
-
-        #    if pipeline is None:
-        #        pipeline = node
-        #    else:
-        #        pipeline += node
-
-        # print("Created pipeline")
-        # print(isinstance(pipeline, gp.Pipeline))
-        # print(type(pipeline))
-        # print(pipeline)
-        # return pipeline
-
     def parse_config(self):
         config = self.config
         self.nodes = []

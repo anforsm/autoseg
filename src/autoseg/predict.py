@@ -125,8 +125,16 @@ def stack_datasets(
             raise RuntimeError("at least one block failed!")
 
 
+def list_to_array_keys(list_):
+    return [gp.ArrayKey(f.upper()) for f in list_]
+
+
 def predict_zarr(
-    input_zarr: zarr.hierarchy.Group, output_zarr, input_image_shape, output_image_shape
+    input_zarr: zarr.hierarchy.Group,
+    output_zarr,
+    input_image_shape,
+    output_image_shape,
+    model_outputs,
 ):
     input_image_shape = Coordinate(input_image_shape)
     output_image_shape = Coordinate(output_image_shape)
@@ -139,7 +147,7 @@ def predict_zarr(
     context = (input_image_size - output_image_size) // 2
 
     raw = gp.ArrayKey("RAW")
-    affs = gp.ArrayKey("AFFS")
+    array_keys = list_to_array_keys(model_outputs)
 
     path = input_zarr.store.path
     ds = input_zarr.path
@@ -193,7 +201,8 @@ def predict_zarr(
 
         chunk_request = gp.BatchRequest()
         chunk_request.add(raw, input_image_size)
-        chunk_request.add(affs, output_image_size)
+        for ak in array_keys:
+            chunk_request.add(ak, output_image_size)
 
         pipeline = gp.ZarrSource(
             path, {raw: ds}, {raw: gp.ArraySpec(interpolatable=True)}
@@ -206,11 +215,12 @@ def predict_zarr(
         pipeline += gp.torch.Predict(
             model,
             inputs={"input": raw},
-            outputs={0: affs},
+            outputs={i: ak for i, ak in enumerate(array_keys)},
             device=get_device_id(),
         )
-        pipeline += gp.Squeeze([affs])  # Remove 1d batch dim
-        pipeline += gp.IntensityScaleShift(affs, 255, 0)
+        pipeline += gp.Squeeze(array_keys)  # Remove 1d batch dim
+        for ak in array_keys:
+            pipeline += gp.IntensityScaleShift(ak, 255, 0)
         pipeline += gp.ZarrWrite(
             output_dir="/".join(o_path.split("/")[:-1]),
             output_filename=o_path.split("/")[-1],
@@ -253,6 +263,7 @@ config = read_config(CONFIG_PATH)
 
 if __name__ == "__main__":
     num_source_configs = len(config["predict"]["source"])
+    model_outputs = config["training"]["model_outputs"]
 
     for i in range(num_source_configs):
         source_config = config["predict"]["source"][i]
@@ -277,6 +288,7 @@ if __name__ == "__main__":
             output_zarr,
             config["training"]["train_dataloader"]["input_image_shape"],
             config["training"]["train_dataloader"]["output_image_shape"],
+            model_outputs,
         )
 
     # Combine the predictions into one zarr if more than one source

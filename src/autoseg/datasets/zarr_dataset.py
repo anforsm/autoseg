@@ -47,17 +47,15 @@ class GunpowderZarrDataset(IterableDataset):
     def request_batch(self, input_image_shape, output_image_shape):
         input_image_size = gp.Coordinate(input_image_shape) * self.voxel_size
         output_image_size = gp.Coordinate(output_image_shape) * self.voxel_size
+        array_keys = self.gp_parser.output_array_keys
         with gp.build(self.pipeline):
             while True:
                 request = gp.BatchRequest()
-                for ak in self.gp_parser.array_keys:
+                for ak in array_keys:
                     if ak.identifier == "RAW":
                         request.add(ak, gp.Coordinate(input_image_size))
                     else:
                         request.add(ak, gp.Coordinate(output_image_size))
 
                 sample = self.pipeline.request_batch(request)
-                yield tuple(
-                    sample[self.gp_parser.array_keys[i]].data
-                    for i in range(len(self.gp_parser.array_keys))
-                )
+                yield tuple(sample[array_keys[i]].data for i in range(len(array_keys)))

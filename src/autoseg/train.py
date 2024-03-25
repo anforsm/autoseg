@@ -108,8 +108,10 @@ def batch_predict(
     # we concatenate them along the channel dimension
     inp = torch.cat(tuple(batch_outputs[name] for name in model_inputs), dim=1)
     prediction = model(inp)
+    print(prediction[0].shape)
+    print(prediction[1].shape)
 
-    if not isinstance(prediction, list):
+    if not isinstance(prediction, tuple):
         prediction = [prediction]
 
     model_outputs = {
