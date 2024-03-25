@@ -41,7 +41,7 @@ def ddp_setup(rank: int, world_size: int):
       world_size: Total number of processes
     """
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12312"
+    os.environ["MASTER_PORT"] = "12313"
     # init_process_group(backend="gloo", rank=rank, world_size=world_size)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
@@ -108,8 +108,6 @@ def batch_predict(
     # we concatenate them along the channel dimension
     inp = torch.cat(tuple(batch_outputs[name] for name in model_inputs), dim=1)
     prediction = model(inp)
-    print(prediction[0].shape)
-    print(prediction[1].shape)
 
     if not isinstance(prediction, tuple):
         prediction = [prediction]
@@ -165,7 +163,7 @@ def train(
     loss_inputs,
     val_dataset=None,
     learning_rate=1e-5,
-    update_steps=1000,
+    update_steps=10000,
 ):
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -184,7 +182,7 @@ def train(
         )
 
     val_log = 10_000
-    save_every = 10
+    save_every = 1000
 
     avg_loss = 0
     lowest_val_loss = float("inf")
@@ -222,7 +220,8 @@ def train(
         # Save model
         if step % save_every == 0:
             if MULTI_GPU:
-                model.save()
+                if DEVICE == "cuda:0":
+                    model.module.save()
             else:
                 model.save()
 

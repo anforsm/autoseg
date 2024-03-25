@@ -1,5 +1,5 @@
 
-local train_config = import "autoseg/defaults/train";
+local train_config = import "autoseg/defaults/train_multigpu";
 local predict = import "autoseg/defaults/predict";
 local augment = import "autoseg/defaults/augment";
 local affs_target = import "autoseg/defaults/affs_target";
