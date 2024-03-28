@@ -107,7 +107,7 @@ def get_2D_snapshot(volumes, center_crop=True):
     return tuple(Image.fromarray(volume) for volume in volumes_2d)
 
 
-def save_zarr_snapshot(filename, dataset_prefix, volumes):
+def save_zarr_snapshot(filename, dataset_prefix, volumes, resolution=[1, 1, 1]):
     # smallest_shape = get_smallest_volume(volumes.values(), 3)
     largest_shape = get_largest_volume(volumes.values(), 3)
     f = zarr.open(filename, "a")
@@ -122,8 +122,7 @@ def save_zarr_snapshot(filename, dataset_prefix, volumes):
             volume = ((volume + 1) / 2 * 255).astype(np.uint8)
 
         f[f"{dataset_prefix}/{name}"] = volume
-        f[f"{dataset_prefix}/{name}"].attrs["resolution"] = [1, 1, 1]
-        f[f"{dataset_prefix}/{name}"].attrs["axis_names"] = ["c", "z", "y", "x"]
+        f[f"{dataset_prefix}/{name}"].attrs["resolution"] = resolution
         diff = np.array(largest_shape) - np.array(volume.shape)[-3:]
         offset = diff // 2
         f[f"{dataset_prefix}/{name}"].attrs["offset"] = list(offset)
