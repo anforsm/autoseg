@@ -26,6 +26,15 @@ def calc_max_padding(output_size, voxel_size, sigma, mode="shrink"):
     return max_padding.get_begin()
 
 
+class GP2(GunpowderZarrDataset):
+    def __init__(**kwargs):
+        super().__init__(**kwargs)
+
+    def request_batch(self, input_image_shape, output_image_shape):
+        self.pipeline
+        super().request_batch(input_image_shape, output_image_shape)
+
+
 class GunpowderZarrDataset(IterableDataset):
     def __init__(
         self,
@@ -44,18 +53,24 @@ class GunpowderZarrDataset(IterableDataset):
     def __iter__(self):
         return iter(self.request_batch(self.input_image_shape, self.output_image_shape))
 
-    def request_batch(self, input_image_shape, output_image_shape):
+    def _make_request(self, input_image_shape, output_image_shape):
         input_image_size = gp.Coordinate(input_image_shape) * self.voxel_size
         output_image_size = gp.Coordinate(output_image_shape) * self.voxel_size
+
         array_keys = self.gp_parser.output_array_keys
+        request = gp.BatchRequest()
+        for ak in array_keys:
+            if ak.identifier == "RAW":
+                request.add(ak, gp.Coordinate(input_image_size))
+            else:
+                request.add(ak, gp.Coordinate(output_image_size))
+        return request
+
+    def request_batch(self, input_image_shape, output_image_shape):
+        request = self._make_request(input_image_shape, output_image_shape)
+        array_keys = self.gp_parser.output_array_keys
+
         with gp.build(self.pipeline):
             while True:
-                request = gp.BatchRequest()
-                for ak in array_keys:
-                    if ak.identifier == "RAW":
-                        request.add(ak, gp.Coordinate(input_image_size))
-                    else:
-                        request.add(ak, gp.Coordinate(output_image_size))
-
                 sample = self.pipeline.request_batch(request)
                 yield tuple(sample[array_keys[i]].data for i in range(len(array_keys)))
