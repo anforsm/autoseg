@@ -26,15 +26,6 @@ def calc_max_padding(output_size, voxel_size, sigma, mode="shrink"):
     return max_padding.get_begin()
 
 
-class GP2(GunpowderZarrDataset):
-    def __init__(**kwargs):
-        super().__init__(**kwargs)
-
-    def request_batch(self, input_image_shape, output_image_shape):
-        self.pipeline
-        super().request_batch(input_image_shape, output_image_shape)
-
-
 class GunpowderZarrDataset(IterableDataset):
     def __init__(
         self,
