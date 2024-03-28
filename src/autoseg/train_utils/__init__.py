@@ -20,6 +20,8 @@ def segmentation_to_rgb(segmentation_arr):
     for x in range(segmentation_arr.shape[0]):
         for y in range(segmentation_arr.shape[1]):
             label = segmentation_arr[x, y]
+            if label == 0:
+                colors[label] = (0, 0, 0)
             if label not in colors:
                 colors[label] = get_random_color()
             rgb_arr[x, y] = colors[label]
