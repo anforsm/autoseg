@@ -20,12 +20,22 @@ import zarr
 import numpy as np
 import sys
 
-from autoseg.models import ExampleModel, ExampleModel2D
+from typing import List
+from typing import TypedDict
+
+
+class ZarrConfig(TypedDict):
+    path: str
+    dataset: str
+
+
+from autoseg.models import ExampleModel, ExampleModel2D, Model
 from autoseg.config import read_config
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
+from autoseg.datasets.utils import get_voxel_size, get_shape
 
-# CONFIG_PATH = "examples/kh2015_multisource"
-CONFIG_PATH = "examples/2d_multisource"
+CONFIG_PATH = "examples/kh2015_multisource"
+# CONFIG_PATH = "examples/2d_multisource"
 
 
 Z_RES = 50  # nm / px, arbitrary
@@ -130,17 +140,18 @@ def list_to_array_keys(list_):
 
 
 def predict_zarr(
-    input_zarr: zarr.hierarchy.Group,
-    output_zarr,
+    input_zarr: ZarrConfig,
+    output_zarrs: List[ZarrConfig],
     input_image_shape,
     output_image_shape,
     model_outputs,
+    config,
 ):
     input_image_shape = Coordinate(input_image_shape)
     output_image_shape = Coordinate(output_image_shape)
 
     # voxel_size = Coordinate([50, 2, 2])
-    voxel_size = input_zarr.attrs["resolution"]
+    voxel_size = Coordinate(get_voxel_size(input_zarr["path"], input_zarr["dataset"]))
 
     input_image_size = input_image_shape * voxel_size
     output_image_size = output_image_shape * voxel_size
@@ -149,8 +160,8 @@ def predict_zarr(
     raw = gp.ArrayKey("RAW")
     array_keys = list_to_array_keys(model_outputs)
 
-    path = input_zarr.store.path
-    ds = input_zarr.path
+    path = input_zarr["path"]
+    ds = input_zarr["dataset"]
 
     source_node = gp.ZarrSource(
         path, {raw: ds}, {raw: gp.ArraySpec(interpolatable=True)}
@@ -164,24 +175,12 @@ def predict_zarr(
     block_read_roi = Roi((0,) * ndims, input_image_size) - context
     block_write_roi = Roi((0,) * ndims, output_image_size)
 
-    o_path = output_zarr.store.path
-    o_ds = output_zarr.path
-
-    prepare_ds(
-        filename=o_path,
-        ds_name=o_ds,
-        total_roi=output_roi,
-        voxel_size=voxel_size,
-        write_size=block_write_roi.shape,
-        delete=True,
-        # num_channels=3,
-        num_channels=2,
-        dtype="uint8",
-    )
+    o_path = output_zarrs[0]["path"]
+    o_datasets = [output_zarr["dataset"] for output_zarr in output_zarrs]
 
     logging.info("Starting workers...")
 
-    def predict_gunpowder():
+    def predict_gunpowder(multi_gpu=False, num_workers=10):
         def get_device_id():
             try:
                 device_id = (
@@ -193,11 +192,9 @@ def predict_zarr(
                 device_id = 0
             return f"cuda:{device_id}"
 
-        model = ExampleModel2D()
+        model = Model(config).to(get_device_id())
         model.eval()
-        model.load_state_dict(
-            torch.load("out/latest_model3.pt", map_location=get_device_id())
-        )
+        model.load()
 
         chunk_request = gp.BatchRequest()
         chunk_request.add(raw, input_image_size)
@@ -222,73 +219,124 @@ def predict_zarr(
         for ak in array_keys:
             pipeline += gp.IntensityScaleShift(ak, 255, 0)
         pipeline += gp.ZarrWrite(
-            output_dir="/".join(o_path.split("/")[:-1]),
-            output_filename=o_path.split("/")[-1],
-            dataset_names={
-                affs: o_ds,
-            },
+            output_dir=Path(o_path).parent.as_posix(),
+            output_filename=o_path,
+            dataset_names={ak: o_ds for ak, o_ds in zip(array_keys, o_datasets)},
         )
-        pipeline += gp.DaisyRequestBlocks(
-            chunk_request,
-            roi_map={
-                raw: "read_roi",
-                affs: "write_roi",
-            },
-            num_workers=1,
-        )
+        if multi_gpu:
+            pipeline += gp.DaisyRequestBlocks(
+                chunk_request,
+                roi_map={
+                    raw: "read_roi",
+                    **{ak: "write_roi" for ak in array_keys},
+                },
+                num_workers=1,
+            )
+        else:
+            pipeline += gp.Scan(chunk_request)
 
         with gp.build(pipeline):
-            pipeline.request_batch(gp.BatchRequest())
+            # pipeline.request_batch(gp.BatchRequest())
+            pipeline.request_batch(chunk_request)
 
-    task = daisy.Task(
-        "PredictBlockwiseTask",
-        input_roi,
-        block_read_roi,
-        block_write_roi,
-        process_function=predict_gunpowder,
-        check_function=None,
-        num_workers=50,
-        read_write_conflict=True,
-        max_retries=5,
-        fit="overhang",
-    )
+    if not config["predict"]["multi_gpu"]:
+        predict_gunpowder(multi_gpu=False)
 
-    done = daisy.run_blockwise([task])
+    if config["training"]["multi_gpu"]:
+        task = daisy.Task(
+            "PredictBlockwiseTask",
+            input_roi,
+            block_read_roi,
+            block_write_roi,
+            process_function=lambda x: predict_gunpowder(
+                multi_gpu=True, num_workers=config["predict"]["num_workers"]
+            ),
+            check_function=None,
+            num_workers=16,
+            read_write_conflict=True,
+            max_retries=5,
+            fit="overhang",
+        )
 
-    if not done:
-        raise RuntimeError("Blockwise prediction failed")
+        done = daisy.run_blockwise([task])
+
+        if not done:
+            raise RuntimeError("Blockwise prediction failed")
 
 
 config = read_config(CONFIG_PATH)
+
 
 if __name__ == "__main__":
     num_source_configs = len(config["predict"]["source"])
     model_outputs = config["training"]["model_outputs"]
 
+    model = Model(config)
+    model.load()
+
     for i in range(num_source_configs):
         source_config = config["predict"]["source"][i]
         download_dataset(source_config["path"])
-        input_zarr = zarr.open(get_dataset_path(source_config["path"]), mode="r")
-        input_zarr = input_zarr[source_config["dataset"]]
+        # input_zarr = zarr.open(get_dataset_path(source_config["path"]), mode="r")
+        # input_zarr = input_zarr[source_config["dataset"]]
+        input_zarr: ZarrConfig = {
+            "path": get_dataset_path(source_config["path"]),
+            "dataset": source_config["dataset"],
+        }
 
-        output_config = config["predict"]["output"][0]
-        out_ds = output_config["dataset"] + f"/{i}"
+        resolution = get_voxel_size(input_zarr["path"], input_zarr["dataset"])
 
-        output_zarr = zarr.open(output_config["path"], mode="a")
+        output_zarrs = []
+        for output_config in config["predict"]["output"]:
+            out_ds = output_config["dataset"] + (
+                f"/{i}" if num_source_configs > 1 else ""
+            )
 
-        output_zarr.create_dataset(
-            out_ds,
-            shape=input_zarr.shape,
-            overwrite=True,
-        )
-        output_zarr = output_zarr[out_ds]
+            output_size = Coordinate(
+                config["training"]["train_dataloader"]["output_image_shape"]
+            ) * Coordinate(resolution)
+            shape = get_shape(input_zarr["path"], input_zarr["dataset"])
+
+            prepare_ds(
+                filename=output_config["path"],
+                ds_name=out_ds,
+                total_roi=gp.Roi(
+                    (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
+                ),
+                write_size=Coordinate(shape) * Coordinate(resolution),
+                delete=True,
+                voxel_size=Coordinate(resolution),
+                num_channels=output_config["num_channels"],
+                dtype="uint8",
+            )
+            print(output_config["path"], out_ds)
+            output_zarrs.append(
+                {
+                    "path": output_config["path"],
+                    "dataset": out_ds,
+                }
+            )
+
+            # output_zarr = zarr.open(output_config["path"], mode="a")
+            # print(list(output_zarr))
+            # print(list(output_zarr["preds"]))
+            # output_zarr = output_zarr[out_ds]
+            # output_zarrs.append(output_zarr)
+
+            # output_zarr.create_group(
+            #    out_ds,
+            #    #shape=input_zarr.shape,
+            #    overwrite=True,
+            # )
+            # output_zarr = output_zarr[out_ds]
 
         predict_zarr(
             input_zarr,
-            output_zarr,
+            output_zarrs,
             config["training"]["train_dataloader"]["input_image_shape"],
             config["training"]["train_dataloader"]["output_image_shape"],
             model_outputs,
+            config,
         )
 
     # Combine the predictions into one zarr if more than one source

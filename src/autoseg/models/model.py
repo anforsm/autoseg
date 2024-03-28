@@ -32,7 +32,8 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def save(self):
         self.save_to_local()
-        self.save_to_hf()
+        if not self.hf_path is None:
+            self.save_to_hf()
 
     def save_to_hf(self):
         self.push_to_hub(self.hf_path)
@@ -43,6 +44,7 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def load(self):
         if Path(self.path).exists():
+            print("Loading from local")
             self.load_from_local()
         else:
             try:
@@ -54,7 +56,7 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
-        self.from_pretrained(Path(self.path))
+        self.from_pretrained(Path(self.hf_path), cache_dir=MODELS_PATH)
 
-    def forward(self, input_):
-        return self.model(input_)
+    def forward(self, input):
+        return self.model(input)

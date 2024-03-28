@@ -21,6 +21,8 @@ from autoseg.datasets import GunpowderZarrDataset
 from autoseg.config import read_config
 from autoseg.datasets.utils import multisample_collate as collate
 from autoseg.transforms.gp_parser import snake_case_to_camel_case
+from autoseg.log import Logger
+from autoseg.train_utils import get_2D_snapshot, save_zarr_snapshot
 
 try:
     mp.set_start_method("spawn")
@@ -45,31 +47,6 @@ def ddp_setup(rank: int, world_size: int):
     # init_process_group(backend="gloo", rank=rank, world_size=world_size)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
-
-
-def get_2D_snapshot(raw, labels, affs, prediction):
-    # Get the middle slice of the 3D volume
-    # raw: (B, C, Z, Y, X)
-    z_raw_i = raw.shape[-3] // 2
-    # labels: (B, C, Z, Y, X)
-    z_label_i = labels.shape[-3] // 2
-
-    raw = raw[0, :, z_raw_i, :, :]
-    prediction = prediction[0, :, z_label_i, :, :]
-    affs = affs[0, :, z_label_i, :, :]
-    labels = labels[z_label_i, :, :]
-
-    raw = rearrange(raw, "c h w -> h (w c)")  # only 1 channel
-    prediction = (rearrange(prediction, "c h w -> h w c") * 255).astype(np.uint8)
-    affs = rearrange(affs, "c h w -> h w c")
-
-    # create images
-    return (
-        Image.fromarray(raw),
-        None,
-        Image.fromarray(affs),
-        Image.fromarray(prediction),
-    )
 
 
 def batch_predict(
@@ -124,33 +101,12 @@ def batch_predict(
     return model_outputs
 
 
-def save_zarr_snapshot(dataset_prefix, filename, raw, labels, affs, prediction):
-    f = zarr.open(filename, "a")
-    num_spatial_dims = 3
-    raw = raw[0]
-    labels = labels[0]
-    affs = affs[0]
-    prediction = prediction[0]
-
-    print(raw)
-    raw += 1
-    raw /= 2
-    raw *= 255
-    print(raw)
-    print(np.max(raw), np.min(raw))
-    raw = raw.astype(np.uint8)
-    raw_shape = np.array(raw.shape)[1:]
-    label_shape = np.array(labels.shape)
-    diff = raw_shape - label_shape
-    offset = diff // 2
-    for name, array in zip(
-        ["raw", "labels", "affs", "prediction"], [raw, labels, affs, prediction]
-    ):
-        f[f"{dataset_prefix}/{name}"] = array
-        f[f"{dataset_prefix}/{name}"].attrs["resolution"] = [1, 1, 1]
-        f[f"{dataset_prefix}/{name}"].attrs["axis_names"] = ["c", "z", "y", "x"]
-        if name in ["labels", "affs", "prediction"]:
-            f[f"{dataset_prefix}/{name}"].attrs["offset"] = list(offset)
+def save_model(model, **kwargs):
+    if MULTI_GPU:
+        if DEVICE == "cuda:0":
+            model.module.save()
+    else:
+        model.save()
 
 
 def train(
@@ -161,43 +117,28 @@ def train(
     model_inputs,
     model_outputs,
     loss_inputs,
-    val_dataset=None,
+    logger=None,
+    val_dataloader=None,
     learning_rate=1e-5,
     update_steps=10000,
+    log_snapshot_every=10,
+    save_every=1000,
+    val_log=10_000,
 ):
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    step = 0
-
-    if val_dataset is not None:
-        val_iter = iter(
-            DataLoader(
-                val_dataset,
-                batch_size=batch_size,
-                num_workers=5,
-                prefetch_factor=4,
-                collate_fn=collate,
-            )
-        )
-
-    val_log = 10_000
-    save_every = 1000
-
     avg_loss = 0
     lowest_val_loss = float("inf")
 
-    print("Starting training")
-    batch_iterator = iter(dataloader)
-    for batch in batch_iterator:
+    for step, batch in zip(range(update_steps), iter(dataloader)):
         optimizer.zero_grad()
 
-        _, loss = batch_predict(
+        prediction, loss = batch_predict(
             model, batch, model_inputs, model_outputs, batch_outputs, crit, loss_inputs
         )
         loss.backward()
         optimizer.step()
-        step += 1
 
         # Log training loss in console
         if not MULTI_GPU or DEVICE == "cuda:0":
@@ -207,8 +148,9 @@ def train(
             )
 
         # Log training loss in wandb
-        if WANDB_LOG:
-            wandb.log(
+
+        if not logger is None:
+            logger.push(
                 {
                     "step": step,
                     "loss": loss.item(),
@@ -217,76 +159,56 @@ def train(
                 }
             )
 
+        if step % log_snapshot_every == 0:
+            image_tensors = {}
+            source_dict = prediction | {
+                name: val for name, val in zip(batch_outputs, batch)
+            }
+
+            for name in logger.image_keys:
+                image_tensors[name] = source_dict[name]
+
+            images = get_2D_snapshot(image_tensors)
+            logger.push({"images": list(images)})
+
+            zarrs = save_zarr_snapshot("snapshots.zarr", f"{step}", image_tensors)
+            logger.push({"zarrs": zarrs})
+
         # Save model
         if step % save_every == 0:
-            if MULTI_GPU:
-                if DEVICE == "cuda:0":
-                    model.module.save()
-            else:
-                model.save()
+            save_model(model)
 
         # Log validation and snapshots
-        if step % val_log == 0:
+        if step % val_log == 0 and val_dataloader is not None:
             with torch.no_grad():
                 model.eval()
-                batch = next(batch_iterator)
-                affs_weights, affs, _, labels, _, raw = batch
-                prediction, loss = batch_predict(model, batch, crit)
-
-                raw_image, labels_image, affs_image, prediction_image = get_2D_snapshot(
-                    raw, labels, affs, prediction.cpu().numpy()
-                )
-
-                save_zarr_snapshot(
-                    f"{step}",
-                    "out/snapshot.zarr",
-                    raw,
-                    labels,
-                    affs,
-                    prediction.cpu().numpy(),
-                )
-
-                if WANDB_LOG:
-                    wandb.log(
-                        {
-                            "step": step,
-                            "snapshots": [raw_image, affs_image, prediction_image],
-                        }
+                avg_loss = 0
+                num_val_batches = 10
+                for _, batch in zip(range(num_val_batches), iter(val_dataloader)):
+                    prediction, loss = batch_predict(
+                        model,
+                        batch,
+                        model_inputs,
+                        model_outputs,
+                        batch_outputs,
+                        crit,
+                        loss_inputs,
                     )
-                else:
-                    if not raw_image.mode == "RGB":
-                        raw_image = raw_image.convert("RGB")
-                    if not affs_image.mode == "RGB":
-                        affs_image = affs_image.convert("RGB")
-                    if not prediction_image.mode == "RGB":
-                        prediction_image = prediction_image.convert("RGB")
-                    raw_image.save(f"out/images/raw_{step}.png")
-                    affs_image.save(f"out/images/affs_{step}.png")
-                    prediction_image.save(f"out/images/prediction_{step}.png")
+                    avg_loss += loss.item()
 
-                if val_dataset is not None:
-                    avg_loss = 0
-                    num_val_batches = 10
-                    for _ in range(num_val_batches):
-                        batch = next(val_iter)
-                        _, loss = batch_predict(model, crit, batch)
-                        avg_loss += loss.item()
+                avg_loss /= num_val_batches
 
-                    avg_loss /= num_val_batches
+                if avg_loss < lowest_val_loss:
+                    lowest_val_loss = avg_loss
+                    save_model(model)
 
-                    if avg_loss < lowest_val_loss:
-                        lowest_val_loss = avg_loss
-                        if MULTI_GPU:
-                            torch.save(model.module.state_dict(), "out/best_model3.pt")
-                        else:
-                            torch.save(model.state_dict(), "out/best_model3.pt")
-                    wandb.log({"val_loss": avg_loss})
+                if not logger is None:
+                    logger.push({"val_loss": avg_loss})
 
                 model.train()
 
-        # End training
-        if step >= update_steps:
-            break
+        if not logger is None:
+            logger.log()
 
 
 def dataloader_from_config(dataset, config):
@@ -308,19 +230,34 @@ def dataloader_from_config(dataset, config):
         )
 
 
-def main(rank, config):
-    global DEVICE, WANDB_LOG, MULTI_GPU
-
-    loss_name = list(
-        filter(lambda x: not x.startswith("_"), config["training"]["loss"].keys())
-    )[0]
+def crit_from_config(config):
+    loss_name = list(filter(lambda x: not x.startswith("_"), config.keys()))[0]
     loss_name_cls = snake_case_to_camel_case(loss_name)
     if hasattr(losses, loss_name_cls):
         crit = getattr(losses, loss_name_cls)
     else:
         crit = getattr(nn, loss_name)
 
-    crit = crit(**config["training"]["loss"][loss_name])
+    crit = crit(**config[loss_name])
+    return crit
+
+
+def logger_from_config(config):
+    config = config["training"]
+    providers = []
+    if "wandb" in config["logging"] and config["logging"]["wandb"]:
+        providers.append("wandb")
+
+    if "tensorboard" in config["logging"] and config["logging"]["tensorboard"]:
+        providers.append("tensorboard")
+
+    logger = Logger(provider=providers)
+    logger.image_keys = config["logging"]["log_images"]
+    return logger
+
+
+def main(rank, config):
+    global DEVICE, WANDB_LOG, MULTI_GPU
 
     if MULTI_GPU:
         ddp_setup(rank=rank, world_size=WORLD_SIZE)
@@ -340,6 +277,8 @@ def main(rank, config):
     if MULTI_GPU:
         model = DDP(model, device_ids=[DEVICE])
 
+    crit = crit_from_config(config["training"]["loss"])
+
     dataset = GunpowderZarrDataset(
         config=config["pipeline"],
         input_image_shape=config["training"]["train_dataloader"]["input_image_shape"],
@@ -350,10 +289,11 @@ def main(rank, config):
         dataset=dataset, config=config["training"]["train_dataloader"]
     )
 
-    batch_outputs = config["training"]["batch_outputs"]
-    model_outputs = config["training"]["model_outputs"]
-    model_inputs = config["training"]["model_inputs"]
-    loss_inputs = config["training"]["loss"]["_inputs"]
+    config = config["training"]
+    batch_outputs = config["batch_outputs"]
+    model_outputs = config["model_outputs"]
+    model_inputs = config["model_inputs"]
+    loss_inputs = config["loss"]["_inputs"]
 
     train(
         model=model,
@@ -363,6 +303,10 @@ def main(rank, config):
         model_outputs=model_outputs,
         model_inputs=model_inputs,
         loss_inputs=loss_inputs,
+        logger=logger_from_config(config),
+        log_snapshot_every=config["log_snapshot_every"],
+        save_every=config["save_every"],
+        val_log=config["val_log"],
     )
 
     if MULTI_GPU:

@@ -4,7 +4,7 @@ import _jsonnet
 
 
 def get_curr_dir():
-    return "/scratch/09699/anforsm/github/autoseg/src/autoseg/config"
+    # return "/scratch/09699/anforsm/github/autoseg/src/autoseg/config"
     return os.path.dirname(os.path.realpath(__file__))
 
 

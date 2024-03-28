@@ -17,7 +17,13 @@ class WeightedMSELoss(torch.nn.Module):
 
         return loss
 
-    def forward(self, affs_prediction, affs_target, affs_weights):
-        loss = self._calc_loss(affs_prediction, affs_target, affs_weights)
+    # def forward(self, affs_prediction, affs_target, affs_weights):
+    def forward(self, *args):
+        loss = 0
+        for i in range(0, len(args), 3):
+            prediction = args[i]
+            target = args[i + 1]
+            weights = args[i + 2]
+            loss += self._calc_loss(prediction, target, weights)
 
         return loss

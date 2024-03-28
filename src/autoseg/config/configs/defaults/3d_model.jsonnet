@@ -2,7 +2,8 @@
   model: {
     name: "3D Model With LSD",
     path: "out",
-    hf_path: "anforsm/3DEM_TACC_LSD_AFF",
+    #hf_path: "anforsm/3DEM_TACC_LSD_AFF",
+    hf_path: null,
     hyperparameters: {
       in_channels: 1,
       output_shapes: [10, 3],
