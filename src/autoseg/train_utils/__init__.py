@@ -85,6 +85,9 @@ def get_2D_snapshot(volumes, center_crop=True):
         if len(volume.shape) > 2 and volume.shape[2] > 3:
             volume = volume[:, :, :3]
 
+        if name == "affs":
+            volume = volume.clip(-1, 1)
+
         if volume.max() <= 1 and volume.min() >= 0:
             volume = (volume * 255).astype(np.uint8)
         elif volume.max() <= 1 and volume.min() >= -1:

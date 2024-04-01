@@ -13,7 +13,8 @@ local model = import "autoseg/defaults/3d_model";
     local zarrsource = import "autoseg/defaults/zarrsource",
 
     _order: ["source", "normalize", "augment", "lsd_target", "target"],
-    _outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_LSDS", "LSDS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
+    #_outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_LSDS", "LSDS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
+    _outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
 
     source: [
       [zarrsource.zarr_source("SynapseWeb/kh2015/oblique")] + pad,
@@ -25,6 +26,6 @@ local model = import "autoseg/defaults/3d_model";
       }},
     ],
 
-  } + augment + affs_target + lsds_target
+  } + augment + affs_target# + lsds_target
 
 } + train_config + predict + model

@@ -182,6 +182,8 @@ def predict_zarr(
 
     def predict_gunpowder(multi_gpu=False, num_workers=10):
         def get_device_id():
+            if not multi_gpu:
+                return "cuda:0"
             try:
                 device_id = (
                     int(daisy.Context.from_env()["worker_id"])
@@ -206,7 +208,7 @@ def predict_zarr(
         )
         pipeline += gp.Normalize(raw)
         pipeline += gp.IntensityScaleShift(raw, 2, -1)
-        pipeline += gp.Pad(raw, None)  # Not sure if needed
+        pipeline += gp.Pad(raw, None, mode="reflect")
         pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
         pipeline += gp.Unsqueeze([raw])  # Add 1d batch dim
         pipeline += gp.torch.Predict(
@@ -214,10 +216,15 @@ def predict_zarr(
             inputs={"input": raw},
             outputs={i: ak for i, ak in enumerate(array_keys)},
             device=get_device_id(),
+            array_specs={ak: gp.ArraySpec(roi=output_roi) for ak in array_keys}
+            if not multi_gpu
+            else None,
         )
         pipeline += gp.Squeeze(array_keys)  # Remove 1d batch dim
+
         for ak in array_keys:
             pipeline += gp.IntensityScaleShift(ak, 255, 0)
+
         pipeline += gp.ZarrWrite(
             output_dir=Path(o_path).parent.as_posix(),
             output_filename=o_path,
@@ -236,8 +243,7 @@ def predict_zarr(
             pipeline += gp.Scan(chunk_request)
 
         with gp.build(pipeline):
-            # pipeline.request_batch(gp.BatchRequest())
-            pipeline.request_batch(chunk_request)
+            pipeline.request_batch(gp.BatchRequest())
 
     if not config["predict"]["multi_gpu"]:
         predict_gunpowder(multi_gpu=False)
@@ -296,6 +302,7 @@ if __name__ == "__main__":
                 config["training"]["train_dataloader"]["output_image_shape"]
             ) * Coordinate(resolution)
             shape = get_shape(input_zarr["path"], input_zarr["dataset"])
+            print(output_size, shape, resolution)
 
             prepare_ds(
                 filename=output_config["path"],

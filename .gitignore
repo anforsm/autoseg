@@ -163,3 +163,4 @@ wandb/
 out/
 data/
 daisy_logs/
+out*/

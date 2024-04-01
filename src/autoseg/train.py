@@ -243,7 +243,6 @@ def crit_from_config(config):
 
 
 def logger_from_config(config):
-    config = config["training"]
     providers = []
     if "wandb" in config["logging"] and config["logging"]["wandb"]:
         providers.append("wandb")
