@@ -14,9 +14,10 @@ MODELS_PATH = ROOT_PATH / "models"
 
 class Model(torch.nn.Module, PyTorchModelHubMixin):
     def __init__(self, config):
+        model_config = config["model"]
+        class_ = model_config["class"]
         super().__init__()
 
-        model_config = config["model"]
         self.name = model_config["name"]
         self.path = model_config["path"]
         self.hf_path = model_config["hf_path"]
@@ -24,15 +25,17 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             tuple(x) for x in model_config["hyperparameters"]["downsample_factors"]
         )
 
-        # self.model = ConfigurableUNet(**model_config["hyperparameters"])
-        self.model = UNETR(
-            img_shape=config["training"]["train_dataloader"]["input_image_shape"],
-            input_dim=1,
-            output_dim=3,
-            patch_size=16,
-            # embed_dim=32,
-            # num_heads=1
-        )
+        if class_ == "UNet":
+            self.model = ConfigurableUNet(**model_config["hyperparameters"])
+        if class_ == "UNETR":
+            self.model = UNETR(
+                img_shape=config["training"]["train_dataloader"]["input_image_shape"],
+                input_dim=1,
+                output_dim=3,
+                patch_size=16,
+                # embed_dim=32,
+                # num_heads=1
+            )
 
         self.config = model_config
 

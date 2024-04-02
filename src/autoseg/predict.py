@@ -1,6 +1,6 @@
 import multiprocessing
 
-multiprocessing.set_start_method("fork")
+multiprocessing.set_start_method("spawn")
 
 import torch
 
@@ -34,8 +34,7 @@ from autoseg.config import read_config
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 from autoseg.datasets.utils import get_voxel_size, get_shape
 
-CONFIG_PATH = "examples/kh2015_multisource"
-# CONFIG_PATH = "examples/2d_multisource"
+CONFIG_PATH = "defaults"
 
 
 Z_RES = 50  # nm / px, arbitrary
@@ -248,15 +247,19 @@ def predict_zarr(
     if not config["predict"]["multi_gpu"]:
         predict_gunpowder(multi_gpu=False)
 
-    if config["training"]["multi_gpu"]:
+    if config["predict"]["multi_gpu"]:
+
+        def f():
+            predict_gunpowder(
+                multi_gpu=True, num_workers=config["predict"]["num_workers"]
+            )
+
         task = daisy.Task(
             "PredictBlockwiseTask",
             input_roi,
             block_read_roi,
             block_write_roi,
-            process_function=lambda x: predict_gunpowder(
-                multi_gpu=True, num_workers=config["predict"]["num_workers"]
-            ),
+            process_function=f,
             check_function=None,
             num_workers=16,
             read_write_conflict=True,

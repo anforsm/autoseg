@@ -11,7 +11,7 @@ def get_curr_dir():
 def read_config(path=None):
     # This lgoic defines how the config file is read within scripts
     if path is None or path == "defaults":
-        path = get_curr_dir() + "configs/defaults.jsonnet"
+        path = get_curr_dir() + "/configs/defaults.jsonnet"
     if path.startswith("examples/"):
         path = get_curr_dir() + "/configs/" + path
 
