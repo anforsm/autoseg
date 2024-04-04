@@ -1,12 +1,13 @@
-{
-  model: {
+{get_model_config(model_name="3DEM_TESTING") ::
+  {model: {
     name: "3D Model With LSD",
-    path: "out",
-    #hf_path: "anforsm/3DEM_TACC_LSD_AFF",
+    path: "out/" + model_name + "/",
+    #hf_path: "anforsm/" + model_name,
     hf_path: null,
+    class: "UNet",
     hyperparameters: {
       in_channels: 1,
-      output_shapes: [10, 3],
+      output_shapes: [3],
       fmap_inc_factor: 5,
       downsample_factors: [[1, 2, 2], [1, 2, 2], [2, 2, 2]],
       kernel_size_down: [
@@ -21,5 +22,5 @@
           [[3, 3, 3], [3, 3, 3]],
       ],
     }
-  }
+  }},
 }

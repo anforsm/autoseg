@@ -5,14 +5,17 @@ import _jsonnet
 
 def get_curr_dir():
     # return "/scratch/09699/anforsm/github/autoseg/src/autoseg/config"
+    return "/home/anton/github/autoseg/src/autoseg/config"
     return os.path.dirname(os.path.realpath(__file__))
 
 
 def read_config(path=None):
     # This lgoic defines how the config file is read within scripts
     if path is None or path == "defaults":
-        path = get_curr_dir() + "configs/defaults.jsonnet"
-    if path.startswith("examples/"):
+        path = get_curr_dir() + "/configs/defaults.jsonnet"
+    if path.startswith("examples/") or path.startswith("autoseg/"):
+        if path.startswith("autoseg"):
+            path = path.replace("autoseg", "")
         path = get_curr_dir() + "/configs/" + path
 
     if path.endswith(".json"):

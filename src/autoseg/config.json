@@ -1,0 +1,469 @@
+{
+    "model": {
+        "class": "UNet",
+        "hf_path": null,
+        "hyperparameters": {
+            "downsample_factors": [
+                [
+                    1,
+                    2,
+                    2
+                ],
+                [
+                    1,
+                    2,
+                    2
+                ],
+                [
+                    2,
+                    2,
+                    2
+                ]
+            ],
+            "fmap_inc_factor": 5,
+            "in_channels": 1,
+            "kernel_size_down": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        1,
+                        3,
+                        3
+                    ],
+                    [
+                        1,
+                        3,
+                        3
+                    ]
+                ]
+            ],
+            "kernel_size_up": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ]
+            ],
+            "output_shapes": [
+                3
+            ]
+        },
+        "name": "3D Model With LSD",
+        "path": "out/3DEM_TESTING/"
+    },
+    "pipeline": {
+        "_order": [
+            "source",
+            "normalize",
+            "augment",
+            "target",
+            "post"
+        ],
+        "_outputs": [
+            "RAW",
+            "LABELS",
+            "GT_AFFS",
+            "AFFS_WEIGHTS",
+            "GT_AFFS_MASK",
+            "LABELS_MASK"
+        ],
+        "augment": [
+            {
+                "elastic_augment": {
+                    "control_point_spacing": [
+                        1,
+                        50,
+                        50
+                    ],
+                    "jitter_sigma": [
+                        0,
+                        5,
+                        5
+                    ],
+                    "rotation_interval": [
+                        0,
+                        1.570796
+                    ],
+                    "scale_interval": [
+                        0.5,
+                        2
+                    ],
+                    "subsample": 4
+                }
+            },
+            {
+                "simple_augment": {
+                    "transpose_only": [
+                        1,
+                        2
+                    ]
+                }
+            },
+            {
+                "noise_augment": {
+                    "array": "RAW"
+                }
+            },
+            {
+                "intensity_augment": {
+                    "array": "RAW",
+                    "scale_max": 1.1,
+                    "scale_min": 0.9,
+                    "shift_max": 0.1,
+                    "shift_min": -0.1
+                }
+            },
+            {
+                "smooth_array": {
+                    "array": "RAW"
+                }
+            },
+            {
+                "grow_boundary": {
+                    "labels": "LABELS",
+                    "only_xy": true
+                }
+            }
+        ],
+        "normalize": [
+            {
+                "normalize": {
+                    "array": "RAW"
+                }
+            }
+        ],
+        "post": [
+            {
+                "intensity_scale_shift": {
+                    "array": "RAW",
+                    "scale": 2,
+                    "shift": -1
+                }
+            },
+            {
+                "unsqueeze": {
+                    "arrays": [
+                        "RAW"
+                    ],
+                    "axis": 0
+                }
+            }
+        ],
+        "source": [
+            [
+                [
+                    {
+                        "zarr_source": {
+                            "array_specs": {
+                                "_labels": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_labels_mask": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_raw": {
+                                    "array_spec": {
+                                        "interpolatable": true
+                                    }
+                                }
+                            },
+                            "datasets": {
+                                "_labels": "labels/s0",
+                                "_labels_mask": "labels_mask/s0",
+                                "_raw": "raw/s0"
+                            },
+                            "store": "SynapseWeb/kh2015/oblique"
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "RAW",
+                            "size": null
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS_MASK",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "random_location": {
+                            "mask": "LABELS_MASK",
+                            "min_masked": 0.1
+                        }
+                    }
+                ],
+                [
+                    {
+                        "zarr_source": {
+                            "array_specs": {
+                                "_labels": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_labels_mask": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_raw": {
+                                    "array_spec": {
+                                        "interpolatable": true
+                                    }
+                                }
+                            },
+                            "datasets": {
+                                "_labels": "labels/s0",
+                                "_labels_mask": "labels_mask/s0",
+                                "_raw": "raw/s0"
+                            },
+                            "store": "SynapseWeb/kh2015/spine"
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "RAW",
+                            "size": null
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS_MASK",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "random_location": {
+                            "mask": "LABELS_MASK",
+                            "min_masked": 0.1
+                        }
+                    }
+                ]
+            ],
+            {
+                "random_provider": {}
+            }
+        ],
+        "target": [
+            {
+                "add_affinities": {
+                    "affinities": "GT_AFFS",
+                    "affinities_mask": "GT_AFFS_MASK",
+                    "affinity_neighborhood": [
+                        [
+                            -1,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            -1,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            -1
+                        ]
+                    ],
+                    "labels": "LABELS",
+                    "labels_mask": "LABELS_MASK"
+                }
+            },
+            {
+                "balance_labels": {
+                    "labels": "GT_AFFS",
+                    "mask": "GT_AFFS_MASK",
+                    "scales": "AFFS_WEIGHTS"
+                }
+            }
+        ]
+    },
+    "predict": {
+        "multi_gpu": true,
+        "num_workers": 10,
+        "output": [
+            {
+                "dataset": "preds/affs",
+                "num_channels": 3,
+                "path": "predict.zarr"
+            }
+        ],
+        "source": [
+            {
+                "dataset": "raw/s0",
+                "path": "SynapseWeb/kh2015/spine"
+            }
+        ]
+    },
+    "training": {
+        "batch_outputs": [
+            "raw",
+            "labels",
+            "gt_affs",
+            "affs_weights",
+            "affs_mask",
+            "labels_mask"
+        ],
+        "log_snapshot_every": 10,
+        "logging": {
+            "log_images": [
+                "raw",
+                "labels",
+                "gt_affs",
+                "affs"
+            ],
+            "wandb": true
+        },
+        "loss": {
+            "_inputs": [
+                "affs",
+                "gt_affs",
+                "affs_weights"
+            ],
+            "weighted_m_s_e_loss": {}
+        },
+        "model_inputs": [
+            "raw"
+        ],
+        "model_outputs": [
+            "affs"
+        ],
+        "multi_gpu": false,
+        "save_every": 100,
+        "train_dataloader": {
+            "batch_size": 1,
+            "input_image_shape": [
+                36,
+                212,
+                212
+            ],
+            "num_workers": 4,
+            "output_image_shape": [
+                12,
+                120,
+                120
+            ],
+            "parallel": false,
+            "precache_per_worker": 4
+        },
+        "update_steps": 10000,
+        "val_log": 10000
+    }
+}

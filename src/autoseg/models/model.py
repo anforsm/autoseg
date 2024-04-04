@@ -1,6 +1,7 @@
 import torch
 from pathlib import Path
 from .configurable_unet import ConfigurableUNet
+from .unets import UNETR
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
 
@@ -13,9 +14,10 @@ MODELS_PATH = ROOT_PATH / "models"
 
 class Model(torch.nn.Module, PyTorchModelHubMixin):
     def __init__(self, config):
+        model_config = config["model"]
+        class_ = model_config["class"]
         super().__init__()
 
-        model_config = config["model"]
         self.name = model_config["name"]
         self.path = model_config["path"]
         self.hf_path = model_config["hf_path"]
@@ -23,7 +25,17 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             tuple(x) for x in model_config["hyperparameters"]["downsample_factors"]
         )
 
-        self.model = ConfigurableUNet(**model_config["hyperparameters"])
+        if class_ == "UNet":
+            self.model = ConfigurableUNet(**model_config["hyperparameters"])
+        if class_ == "UNETR":
+            self.model = UNETR(
+                img_shape=config["training"]["train_dataloader"]["input_image_shape"],
+                input_dim=1,
+                output_dim=3,
+                patch_size=16,
+                # embed_dim=32,
+                # num_heads=1
+            )
 
         self.config = model_config
 
@@ -53,10 +65,12 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
                 pass
 
     def load_from_hf(self):
-        self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
+        if self.hf_path is not None:
+            self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
-        self.from_pretrained(Path(self.hf_path), cache_dir=MODELS_PATH)
+        self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
+        # self.from_pretrained(Path(self.hf_path), cache_dir=MODELS_PATH)
 
     def forward(self, input):
         return self.model(input)

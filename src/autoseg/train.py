@@ -29,8 +29,9 @@ try:
 except RuntimeError:
     pass
 
-CONFIG_PATH = "examples/kh2015_multisource"
-# CONFIG_PATH = "examples/2d_multisource"
+CONFIG_PATH = "defaults"
+# CONFIG_PATH = "examples/lsd"
+# CONFIG_PATH = "autoseg/user_configs/test/config"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
@@ -147,7 +148,7 @@ def train(
                 end="\r",
             )
 
-        # Log training loss in wandb
+        # Log training loss n wandb
 
         if not logger is None:
             logger.push(
@@ -243,7 +244,6 @@ def crit_from_config(config):
 
 
 def logger_from_config(config):
-    config = config["training"]
     providers = []
     if "wandb" in config["logging"] and config["logging"]["wandb"]:
         providers.append("wandb")
@@ -314,6 +314,9 @@ def main(rank, config):
 
 
 config = read_config(CONFIG_PATH)
+import json
+
+json.dump(config, open("config.json", "w"), indent=4)
 MULTI_GPU = config["training"]["multi_gpu"]
 WANDB_LOG = config["training"]["logging"]["wandb"]
 

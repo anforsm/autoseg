@@ -1,0 +1,1 @@
+predict.zarr    predict.zarr     ZarrSource[/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr.zip] -> Normalize -> IntensityScaleShift -> Pad -> Unsqueeze -> Unsqueeze -> Predict -> Squeeze -> IntensityScaleShift -> ZarrWrite -> DaisyRequestBlocks

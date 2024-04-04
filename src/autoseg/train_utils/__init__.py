@@ -85,6 +85,9 @@ def get_2D_snapshot(volumes, center_crop=True):
         if len(volume.shape) > 2 and volume.shape[2] > 3:
             volume = volume[:, :, :3]
 
+        if name == "affs":
+            volume = volume.clip(-1, 1)
+
         if volume.max() <= 1 and volume.min() >= 0:
             volume = (volume * 255).astype(np.uint8)
         elif volume.max() <= 1 and volume.min() >= -1:
@@ -120,6 +123,9 @@ def save_zarr_snapshot(filename, dataset_prefix, volumes, resolution=[1, 1, 1]):
 
         if volume.min() < 0 and volume.min() > -1 and volume.max() < 1:
             volume = ((volume + 1) / 2 * 255).astype(np.uint8)
+
+        if "int" in str(volume.dtype) and volume.max() <= 1:
+            volume = volume.astype(np.float32)
 
         f[f"{dataset_prefix}/{name}"] = volume
         f[f"{dataset_prefix}/{name}"].attrs["resolution"] = resolution
