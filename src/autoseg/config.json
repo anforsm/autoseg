@@ -1,7 +1,7 @@
 {
     "model": {
         "class": "UNet",
-        "hf_path": "anforsm/3DEM_TESTING",
+        "hf_path": null,
         "hyperparameters": {
             "downsample_factors": [
                 [
@@ -115,14 +115,13 @@
             ]
         },
         "name": "3D Model With LSD",
-        "path": "out_3DEM_TESTING/"
+        "path": "out/3DEM_TESTING/"
     },
     "pipeline": {
         "_order": [
             "source",
             "normalize",
             "augment",
-            "lsd_target",
             "target",
             "post"
         ],
@@ -397,16 +396,13 @@
         ]
     },
     "predict": {
-        "model": {
-            "path": "out/latest_model3.pt"
-        },
-        "multi_gpu": false,
+        "multi_gpu": true,
         "num_workers": 10,
         "output": [
             {
                 "dataset": "preds/affs",
                 "num_channels": 3,
-                "path": "multiout.zarr"
+                "path": "predict.zarr"
             }
         ],
         "source": [
@@ -433,7 +429,7 @@
                 "gt_affs",
                 "affs"
             ],
-            "wandb": false
+            "wandb": true
         },
         "loss": {
             "_inputs": [
@@ -450,7 +446,7 @@
             "affs"
         ],
         "multi_gpu": false,
-        "save_every": 1000,
+        "save_every": 100,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [

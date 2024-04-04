@@ -1,8 +1,9 @@
 {get_model_config(model_name="3DEM_TESTING") ::
   {model: {
     name: "3D Model With LSD",
-    path: "out_" + model_name + "/",
-    hf_path: "anforsm/" + model_name,
+    path: "out/" + model_name + "/",
+    #hf_path: "anforsm/" + model_name,
+    hf_path: null,
     class: "UNet",
     hyperparameters: {
       in_channels: 1,

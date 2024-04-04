@@ -31,6 +31,7 @@ except RuntimeError:
 
 CONFIG_PATH = "defaults"
 # CONFIG_PATH = "examples/lsd"
+# CONFIG_PATH = "autoseg/user_configs/test/config"
 
 WORLD_SIZE = torch.cuda.device_count()
 DEVICE = 0
@@ -147,7 +148,7 @@ def train(
                 end="\r",
             )
 
-        # Log training loss in wandb
+        # Log training loss n wandb
 
         if not logger is None:
             logger.push(

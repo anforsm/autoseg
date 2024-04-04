@@ -124,6 +124,9 @@ def save_zarr_snapshot(filename, dataset_prefix, volumes, resolution=[1, 1, 1]):
         if volume.min() < 0 and volume.min() > -1 and volume.max() < 1:
             volume = ((volume + 1) / 2 * 255).astype(np.uint8)
 
+        if "int" in str(volume.dtype) and volume.max() <= 1:
+            volume = volume.astype(np.float32)
+
         f[f"{dataset_prefix}/{name}"] = volume
         f[f"{dataset_prefix}/{name}"].attrs["resolution"] = resolution
         diff = np.array(largest_shape) - np.array(volume.shape)[-3:]

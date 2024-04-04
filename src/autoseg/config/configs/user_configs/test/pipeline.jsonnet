@@ -7,14 +7,10 @@
     local zarrsource = import "autoseg/defaults/zarrsource",
 
     _order: ["source", "normalize", "augment", "target", "post"],
-    _outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
+    _outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK", "GT_LSDS", "LSDS_WEIGHTS"],
 
     source: [
-      [
-        [zarrsource.zarr_source("SynapseWeb/kh2015/oblique")] + pad,
-        [zarrsource.zarr_source("SynapseWeb/kh2015/spine")] + pad,
-      ],
-      {random_provider: {}}
+        [zarrsource.zarr_source("SynapseWeb/kh2015/apical")] + pad,
     ],
 
     normalize: [
@@ -26,16 +22,16 @@
     augment: [
       {elastic_augment: {
         control_point_spacing: [1, 50, 50],
-        jitter_sigma: [0, 5, 5],
-        scale_interval: [0.5, 2.0],
+        jitter_sigma: [0, 1, 1],
+        scale_interval: [1.0, 3.0],
         rotation_interval: [0, 3.141592 / 2],
-        subsample: 4
+        subsample: 4,
+        prob_slip: 0.01,
+        prob_shift: 0.01,
+        max_misalign: 1,
       }},
       {simple_augment: {
         transpose_only: [1, 2]
-      }},
-      {noise_augment: {
-        array: "RAW",
       }},
       {intensity_augment: {
         array: "RAW",
@@ -47,13 +43,20 @@
       {smooth_array: {
         array: "RAW"
       }},
+    ],
+    target: [
+      {add_local_shape_descriptor: {
+        segmentation: "LABELS",
+        descriptor: "GT_LSDS",
+        labels_mask: "LABELS_MASK",
+        lsds_mask: "LSDS_WEIGHTS",
+        sigma: 80,
+        downsample: 2,
+      }},
       {grow_boundary: {
         labels: "LABELS",
         only_xy: true,
-      }}
-    ],
-
-    target: [
+      }},
       {add_affinities: {
         labels: "LABELS",
         labels_mask: "LABELS_MASK",
@@ -71,7 +74,6 @@
         mask: "GT_AFFS_MASK",
       }},
     ],
-
     post: [
       {intensity_scale_shift: {
         array: "RAW",

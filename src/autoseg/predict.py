@@ -1,6 +1,6 @@
 import multiprocessing
 
-multiprocessing.set_start_method("spawn")
+multiprocessing.set_start_method("fork")
 
 import torch
 
@@ -23,6 +23,8 @@ import sys
 from typing import List
 from typing import TypedDict
 
+from predict_blockwise import predict_blockwise
+
 
 class ZarrConfig(TypedDict):
     path: str
@@ -38,6 +40,16 @@ CONFIG_PATH = "defaults"
 
 
 Z_RES = 50  # nm / px, arbitrary
+
+
+def start_worker():
+    worker_id = daisy.Context.from_env()["worker_id"]
+    task_id = daisy.Context.from_env()["task_id"]
+
+    print(f"worker {worker_id} started for task {task_id}...")
+    logging.log(logging.WARNING, f"worker {worker_id} started for task {task_id}...")
+
+    subprocess.run(["python", "predict_blockwise.py"])
 
 
 def copy(block, in_ds, out_ds):
@@ -144,10 +156,12 @@ def predict_zarr(
     input_image_shape,
     output_image_shape,
     model_outputs,
+    num_workers,
     config,
 ):
-    input_image_shape = Coordinate(input_image_shape)
-    output_image_shape = Coordinate(output_image_shape)
+    shape_increase = Coordinate(config["predict"]["shape_increase"])
+    input_image_shape = Coordinate(input_image_shape) + shape_increase
+    output_image_shape = Coordinate(output_image_shape) + shape_increase
 
     # voxel_size = Coordinate([50, 2, 2])
     voxel_size = Coordinate(get_voxel_size(input_zarr["path"], input_zarr["dataset"]))
@@ -157,7 +171,7 @@ def predict_zarr(
     context = (input_image_size - output_image_size) // 2
 
     raw = gp.ArrayKey("RAW")
-    array_keys = list_to_array_keys(model_outputs)
+    # array_keys = list_to_array_keys(model_outputs)
 
     path = input_zarr["path"]
     ds = input_zarr["dataset"]
@@ -177,92 +191,41 @@ def predict_zarr(
     o_path = output_zarrs[0]["path"]
     o_datasets = [output_zarr["dataset"] for output_zarr in output_zarrs]
 
-    logging.info("Starting workers...")
-
-    def predict_gunpowder(multi_gpu=False, num_workers=10):
-        def get_device_id():
-            if not multi_gpu:
-                return "cuda:0"
-            try:
-                device_id = (
-                    int(daisy.Context.from_env()["worker_id"])
-                    % torch.cuda.device_count()
-                )
-            except Exception as e:
-                logging.warning(f"Could not get device id from environment: {e}")
-                device_id = 0
-            return f"cuda:{device_id}"
-
-        model = Model(config).to(get_device_id())
-        model.eval()
-        model.load()
-
-        chunk_request = gp.BatchRequest()
-        chunk_request.add(raw, input_image_size)
-        for ak in array_keys:
-            chunk_request.add(ak, output_image_size)
-
-        pipeline = gp.ZarrSource(
-            path, {raw: ds}, {raw: gp.ArraySpec(interpolatable=True)}
-        )
-        pipeline += gp.Normalize(raw)
-        pipeline += gp.IntensityScaleShift(raw, 2, -1)
-        pipeline += gp.Pad(raw, None, mode="reflect")
-        pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
-        pipeline += gp.Unsqueeze([raw])  # Add 1d batch dim
-        pipeline += gp.torch.Predict(
-            model,
-            inputs={"input": raw},
-            outputs={i: ak for i, ak in enumerate(array_keys)},
-            device=get_device_id(),
-            array_specs={ak: gp.ArraySpec(roi=output_roi) for ak in array_keys}
-            if not multi_gpu
-            else None,
-        )
-        pipeline += gp.Squeeze(array_keys)  # Remove 1d batch dim
-
-        for ak in array_keys:
-            pipeline += gp.IntensityScaleShift(ak, 255, 0)
-
-        pipeline += gp.ZarrWrite(
-            output_dir=Path(o_path).parent.as_posix(),
-            output_filename=o_path,
-            dataset_names={ak: o_ds for ak, o_ds in zip(array_keys, o_datasets)},
-        )
-        if multi_gpu:
-            pipeline += gp.DaisyRequestBlocks(
-                chunk_request,
-                roi_map={
-                    raw: "read_roi",
-                    **{ak: "write_roi" for ak in array_keys},
-                },
-                num_workers=1,
-            )
-        else:
-            pipeline += gp.Scan(chunk_request)
-
-        with gp.build(pipeline):
-            pipeline.request_batch(gp.BatchRequest())
+    conf = {
+        "config": config,
+        "array_keys": model_outputs,
+        "input_path": path.as_posix(),
+        "input_dataset": ds,
+        "output_path": o_path,
+        "output_datasets": o_datasets,
+        "input_image_size": input_image_size,
+        "output_image_size": output_image_size,
+        "output_roi": (output_roi.offset, output_roi.shape),
+        "multi_gpu": True,
+        "num_workers": config["predict"]["num_workers"],
+    }
 
     if not config["predict"]["multi_gpu"]:
-        predict_gunpowder(multi_gpu=False)
+        conf["multi_gpu"] = False
+        predict_blockwise(**conf)
 
     if config["predict"]["multi_gpu"]:
+        # def f():
+        #    predict_gunpowder(
+        #        multi_gpu=True, num_workers=config["predict"]["num_workers"]
+        #    )
 
-        def f():
-            predict_gunpowder(
-                multi_gpu=True, num_workers=config["predict"]["num_workers"]
-            )
+        json.dump(conf, open("conf.json", "w"))
 
         task = daisy.Task(
             "PredictBlockwiseTask",
             input_roi,
             block_read_roi,
             block_write_roi,
-            process_function=f,
+            process_function=start_worker,
             check_function=None,
-            num_workers=16,
-            read_write_conflict=True,
+            num_workers=num_workers,
+            read_write_conflict=False,
             max_retries=5,
             fit="overhang",
         )
@@ -317,6 +280,8 @@ if __name__ == "__main__":
                 delete=True,
                 voxel_size=Coordinate(resolution),
                 num_channels=output_config["num_channels"],
+                # compressor={"id": "blosc"},
+                # force_exact_write_size=True,
                 dtype="uint8",
             )
             print(output_config["path"], out_ds)
@@ -346,6 +311,7 @@ if __name__ == "__main__":
             config["training"]["train_dataloader"]["input_image_shape"],
             config["training"]["train_dataloader"]["output_image_shape"],
             model_outputs,
+            config["predict"]["num_workers"],
             config,
         )
 

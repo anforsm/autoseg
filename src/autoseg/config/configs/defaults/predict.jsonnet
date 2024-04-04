@@ -1,17 +1,18 @@
 {
   predict: {
-    multi_gpu: true,
-    num_workers: 3,
+    multi_gpu: false,
+    num_workers: 6,
+    shape_increase: [0, 80, 80],
     source: [
       {
-        path: "SynapseWeb/kh2015/spine",
+        path: "/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr",
         dataset: "raw/s0"
       }
     ],
 
     output: [
       {
-        path: "multiout.zarr",
+        path: "predict_3gpu.zarr",
         dataset: "preds/affs",
         num_channels: 3,
         #stacked: true,

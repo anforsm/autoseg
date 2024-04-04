@@ -9,7 +9,7 @@
     model_inputs: ["raw"],
     update_steps: 10000,
     log_snapshot_every: 10,
-    save_every: 1000, # save model every 1000 iterations
+    save_every: 100, # save model every x iterations
     val_log: 10000,
     loss: {
       weighted_m_s_e_loss: {},
@@ -25,7 +25,7 @@
     },
     logging: {
       log_images: ["raw", "labels", "gt_affs", "affs"],
-      wandb: false,
+      wandb: true,
     }
   }
 }

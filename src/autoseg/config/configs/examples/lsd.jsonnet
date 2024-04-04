@@ -14,7 +14,7 @@ local default = import "autoseg/defaults";
         descriptor: "GT_LSDS",
         labels_mask: "LABELS_MASK",
         lsds_mask: "LSDS_WEIGHTS",
-        sigma: 40,
+        sigma: 80,
         downsample: 2,
       }},
     ]
@@ -27,7 +27,7 @@ local default = import "autoseg/defaults";
   },
 
   training+: {
-    batch_outputs+: ["gt_lsds", "lsds_weights", "lsds_mask"],
+    batch_outputs+: ["gt_lsds", "lsds_weights"],
     model_outputs+: ["lsds"],
     loss+: {
       _inputs+: ["lsds", "gt_lsds", "lsds_weights"],
