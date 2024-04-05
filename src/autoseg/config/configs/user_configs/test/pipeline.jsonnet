@@ -28,7 +28,7 @@
         subsample: 4,
         prob_slip: 0.01,
         prob_shift: 0.01,
-        max_misalign: 1,
+        max_misalign: 10,
       }},
       {simple_augment: {
         transpose_only: [1, 2]

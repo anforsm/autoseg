@@ -1,24 +1,24 @@
 local default = import "autoseg/defaults";
 
+local lsd_target = {lsd_target: [
+  {add_local_shape_descriptor: {
+    segmentation: "LABELS",
+    descriptor: "GT_LSDS",
+    labels_mask: "LABELS_MASK",
+    lsds_mask: "LSDS_WEIGHTS",
+    sigma: 80,
+    downsample: 2,
+  }},
+]};
+
+# Returns
 {}
  + default
-
  + {
   pipeline+: {
     _order+: ["lsd_target"],
-    _outputs+: ["GT_LSDS", "LSDS_WEIGHTS", "GT_LSDS_MASK"],
-
-    lsd_target: [
-      {add_local_shape_descriptor: {
-        segmentation: "LABELS",
-        descriptor: "GT_LSDS",
-        labels_mask: "LABELS_MASK",
-        lsds_mask: "LSDS_WEIGHTS",
-        sigma: 80,
-        downsample: 2,
-      }},
-    ]
-  },
+    _outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
+  } + lsd_target,
 
   model+: {
     hyperparameters+: {
@@ -34,7 +34,15 @@ local default = import "autoseg/defaults";
     },
     logging+: {
       log_images+: ["gt_lsds", "lsds"]
+    },
+
+    val_dataloader+: {
+      pipeline+: {
+        _order+: ["lsd_target"],
+        _outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
+      } + lsd_target
     }
+
   },
 
   predict+: {

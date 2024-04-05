@@ -3,12 +3,20 @@ from collections import Iterable
 
 
 class Logger:
-    def __init__(self, provider="wandb"):
+    def __init__(self, name=None, provider="wandb", config=None):
         if not isinstance(provider, list):
             provider = [provider]
 
         self.providers = provider
         self.current_data = {}
+        if self.name is None:
+            try:
+                self.name = config["model"]["name"]
+            except KeyError:
+                pass
+        self.name = name
+
+        self.config = config
 
         for provider in self.providers:
             if provider == "wandb":
@@ -22,7 +30,11 @@ class Logger:
         global wandb
         import wandb
 
-        wandb.init(project="autoseg")
+        wandb.init(
+            name=self.name + " " + wandb.util.generate_id(),
+            project="autoseg",
+            config=self.config,
+        )
 
     def push(self, data):
         self.current_data.update(data)

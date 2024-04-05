@@ -1,3 +1,5 @@
+local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
+
 {training:
   {
     multi_gpu: false,
@@ -10,22 +12,30 @@
     update_steps: 10000,
     log_snapshot_every: 10,
     save_every: 100, # save model every x iterations
-    val_log: 10000,
+    overwrite_checkpoints: false,
+    val_log: 100,
+    num_val_samples: 100,
+    save_best: true,
     loss: {
       weighted_m_s_e_loss: {},
       _inputs: ["affs", "gt_affs", "affs_weights"],
     },
     train_dataloader: {
       batch_size: 1,
-      parallel: false,
-      num_workers: 4,
-      precache_per_worker: 4,
+      parallel: true,
+      num_workers: 10,
+      precache_per_worker: 2,
+      # change shapes to
+      #input_image_shape: [48, 196, 196],
       input_image_shape: [36, 212, 212],
-      output_image_shape: [12, 120, 120],
+      output_image_shape: [4, 120, 120],
+      #output_image_shape: [12, 120, 120],
+      #output_image_shape: [16, 104, 104],
     },
     logging: {
       log_images: ["raw", "labels", "gt_affs", "affs"],
       wandb: true,
-    }
+    },
+    val_dataloader: self.train_dataloader + minimal_pipeline
   }
 }

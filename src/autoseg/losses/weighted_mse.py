@@ -6,6 +6,9 @@ class WeightedMSELoss(torch.nn.Module):
         super(WeightedMSELoss, self).__init__()
 
     def _calc_loss(self, pred, target, weights):
+        # print("pred", pred.shape)
+        # print("target", target.shape)
+        # print("weights", weights.shape)
         scale = weights * (pred - target) ** 2
 
         if len(torch.nonzero(scale)) != 0:

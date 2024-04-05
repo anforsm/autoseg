@@ -42,17 +42,35 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
     def checkpoint(self, iteration, local_only=True):
         pass
 
-    def save(self):
-        self.save_to_local()
+    def save(self, **kwargs):
+        self.save_to_local(**kwargs)
         if not self.hf_path is None:
-            self.save_to_hf()
+            self.save_to_hf(**kwargs)
 
-    def save_to_hf(self):
-        self.push_to_hub(self.hf_path)
+    @staticmethod
+    def get_subname(**kwargs):
+        name = None
+        if "step" in kwargs:
+            if (
+                "overwrite_checkpoints" in kwargs
+                and not kwargs["overwrite_checkpoints"]
+            ):
+                name = f"step-{kwargs['step']}"
 
-    def save_to_local(self):
-        self.save_pretrained(self.path)
-        pass
+        if "save_best" in kwargs and kwargs["save_best"]:
+            name = "best"
+
+        return name
+
+    def save_to_hf(self, **kwargs):
+        # Saves to huggingface hub, uses branch  that is number of steps
+        print("Uploading model to Hugging Face 🤗")
+        commit = self.get_subname(**kwargs)
+        self.push_to_hub(self.hf_path, commit_message=commit)
+
+    def save_to_local(self, **kwargs):
+        subpath = self.get_subname(**kwargs)
+        self.save_pretrained(Path(self.path) / Path(subpath))
 
     def load(self):
         if Path(self.path).exists():

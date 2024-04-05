@@ -29,8 +29,8 @@ try:
 except RuntimeError:
     pass
 
-CONFIG_PATH = "defaults"
-# CONFIG_PATH = "examples/lsd"
+# CONFIG_PATH = "defaults"
+CONFIG_PATH = "examples/lsd"
 # CONFIG_PATH = "autoseg/user_configs/test/config"
 
 WORLD_SIZE = torch.cuda.device_count()
@@ -105,9 +105,9 @@ def batch_predict(
 def save_model(model, **kwargs):
     if MULTI_GPU:
         if DEVICE == "cuda:0":
-            model.module.save()
+            model.module.save(**kwargs)
     else:
-        model.save()
+        model.save(**kwargs)
 
 
 def train(
@@ -125,6 +125,8 @@ def train(
     log_snapshot_every=10,
     save_every=1000,
     val_log=10_000,
+    overwrite_checkpoints=True,
+    save_best=True,
 ):
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -177,7 +179,7 @@ def train(
 
         # Save model
         if step % save_every == 0:
-            save_model(model)
+            save_model(model, step=step, overwrite_checkpoints=overwrite_checkpoints)
 
         # Log validation and snapshots
         if step % val_log == 0 and val_dataloader is not None:
@@ -199,9 +201,9 @@ def train(
 
                 avg_loss /= num_val_batches
 
-                if avg_loss < lowest_val_loss:
+                if avg_loss < lowest_val_loss and save_best:
                     lowest_val_loss = avg_loss
-                    save_model(model)
+                    save_model(model, save_best=save_best)
 
                 if not logger is None:
                     logger.push({"val_loss": avg_loss})
@@ -289,6 +291,16 @@ def main(rank, config):
         dataset=dataset, config=config["training"]["train_dataloader"]
     )
 
+    validation_dataset = GunpowderZarrDataset(
+        config=config["training"]["val_dataloader"]["pipeline"],
+        input_image_shape=config["training"]["val_dataloader"]["input_image_shape"],
+        output_image_shape=config["training"]["val_dataloader"]["output_image_shape"],
+    )
+
+    val_dataloader = dataloader_from_config(
+        dataset=validation_dataset, config=config["training"]["val_dataloader"]
+    )
+
     config = config["training"]
     batch_outputs = config["batch_outputs"]
     model_outputs = config["model_outputs"]
@@ -298,6 +310,7 @@ def main(rank, config):
     train(
         model=model,
         dataloader=dataloader,
+        val_dataloader=val_dataloader,
         crit=crit,
         batch_outputs=batch_outputs,
         model_outputs=model_outputs,
@@ -307,6 +320,8 @@ def main(rank, config):
         log_snapshot_every=config["log_snapshot_every"],
         save_every=config["save_every"],
         val_log=config["val_log"],
+        overwrite_checkpoints=config["overwrite_checkpoints"],
+        save_best=config["save_best"],
     )
 
     if MULTI_GPU:
