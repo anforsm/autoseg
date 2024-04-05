@@ -14,7 +14,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     save_every: 1000, # save model every x iterations
     overwrite_checkpoints: false,
     val_log: 1000,
-    num_val_samples: 100,
+    num_val_samples: 10,
     save_best: true,
     learning_rate: 5e-5,
     loss: {
@@ -22,7 +22,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
       _inputs: ["affs", "gt_affs", "affs_weights"],
     },
     train_dataloader: {
-      batch_size: 1,
+      batch_size: 8,
       parallel: true,
       num_workers: 10,
       precache_per_worker: 1,

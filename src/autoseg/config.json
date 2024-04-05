@@ -414,12 +414,12 @@
             "lsds"
         ],
         "multi_gpu": false,
-        "num_val_samples": 100,
+        "num_val_samples": 10,
         "overwrite_checkpoints": false,
         "save_best": true,
         "save_every": 1000,
         "train_dataloader": {
-            "batch_size": 1,
+            "batch_size": 8,
             "input_image_shape": [
                 36,
                 212,
@@ -436,7 +436,7 @@
         },
         "update_steps": 10000,
         "val_dataloader": {
-            "batch_size": 1,
+            "batch_size": 8,
             "input_image_shape": [
                 36,
                 212,
