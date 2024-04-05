@@ -9,12 +9,14 @@ class Logger:
 
         self.providers = provider
         self.current_data = {}
+        self.name = name
         if self.name is None:
+            print("Inferred name")
+            # self.name = config["model"]["name"]
             try:
                 self.name = config["model"]["name"]
-            except KeyError:
+            except:
                 pass
-        self.name = name
 
         self.config = config
 
@@ -30,8 +32,15 @@ class Logger:
         global wandb
         import wandb
 
+        name = self.name
+        if name is None:
+            name = wandb.util.generate_id()
+        else:
+            name = name + " " + wandb.util.generate_id()
+        print("Creating run", name)
+
         wandb.init(
-            name=self.name + " " + wandb.util.generate_id(),
+            name=name,
             project="autoseg",
             config=self.config,
         )

@@ -254,9 +254,9 @@
                                 }
                             },
                             "datasets": {
-                                "_labels": "labels/s0",
-                                "_labels_mask": "labels_mask/s0",
-                                "_raw": "raw/s0"
+                                "_labels": "labels/s1",
+                                "_labels_mask": "labels_mask/s1",
+                                "_raw": "raw/s1"
                             },
                             "store": "SynapseWeb/kh2015/apical"
                         }
@@ -298,7 +298,7 @@
                     {
                         "random_location": {
                             "mask": "LABELS_MASK",
-                            "min_masked": 0.1
+                            "min_masked": 0.7
                         }
                     }
                 ]
@@ -382,7 +382,8 @@
             "gt_lsds",
             "lsds_weights"
         ],
-        "log_snapshot_every": 10,
+        "learning_rate": 5e-05,
+        "log_snapshot_every": 100,
         "logging": {
             "log_images": [
                 "raw",
@@ -416,7 +417,7 @@
         "num_val_samples": 100,
         "overwrite_checkpoints": false,
         "save_best": true,
-        "save_every": 100,
+        "save_every": 1000,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
@@ -424,14 +425,14 @@
                 212,
                 212
             ],
-            "num_workers": 20,
+            "num_workers": 10,
             "output_image_shape": [
                 4,
                 120,
                 120
             ],
             "parallel": true,
-            "precache_per_worker": 10
+            "precache_per_worker": 1
         },
         "update_steps": 10000,
         "val_dataloader": {
@@ -441,7 +442,7 @@
                 212,
                 212
             ],
-            "num_workers": 20,
+            "num_workers": 10,
             "output_image_shape": [
                 4,
                 120,
@@ -524,9 +525,9 @@
                                     }
                                 },
                                 "datasets": {
-                                    "_labels": "labels/s0",
-                                    "_labels_mask": "labels_mask/s0",
-                                    "_raw": "raw/s0"
+                                    "_labels": "labels/s1",
+                                    "_labels_mask": "labels_mask/s1",
+                                    "_raw": "raw/s1"
                                 },
                                 "store": "SynapseWeb/kh2015/oblique"
                             }
@@ -568,7 +569,7 @@
                         {
                             "random_location": {
                                 "mask": "LABELS_MASK",
-                                "min_masked": 0.1
+                                "min_masked": 0.7
                             }
                         }
                     ]
@@ -608,8 +609,8 @@
                     }
                 ]
             },
-            "precache_per_worker": 10
+            "precache_per_worker": 1
         },
-        "val_log": 100
+        "val_log": 1000
     }
 }

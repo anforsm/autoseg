@@ -246,6 +246,8 @@ def crit_from_config(config):
 
 
 def logger_from_config(config):
+    root_config = config
+    config = config["training"]
     providers = []
     if "wandb" in config["logging"] and config["logging"]["wandb"]:
         providers.append("wandb")
@@ -253,7 +255,7 @@ def logger_from_config(config):
     if "tensorboard" in config["logging"] and config["logging"]["tensorboard"]:
         providers.append("tensorboard")
 
-    logger = Logger(provider=providers)
+    logger = Logger(provider=providers, config=root_config)
     logger.image_keys = config["logging"]["log_images"]
     return logger
 
@@ -301,6 +303,7 @@ def main(rank, config):
         dataset=validation_dataset, config=config["training"]["val_dataloader"]
     )
 
+    root_config = config
     config = config["training"]
     batch_outputs = config["batch_outputs"]
     model_outputs = config["model_outputs"]
@@ -316,12 +319,13 @@ def main(rank, config):
         model_outputs=model_outputs,
         model_inputs=model_inputs,
         loss_inputs=loss_inputs,
-        logger=logger_from_config(config),
+        logger=logger_from_config(root_config),
         log_snapshot_every=config["log_snapshot_every"],
         save_every=config["save_every"],
         val_log=config["val_log"],
         overwrite_checkpoints=config["overwrite_checkpoints"],
         save_best=config["save_best"],
+        learning_rate=config["learning_rate"],
     )
 
     if MULTI_GPU:

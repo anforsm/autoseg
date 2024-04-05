@@ -9,9 +9,9 @@
   {zarr_source: {
     store: store,
     datasets: {
-      _raw: "raw/s0",
-      _labels: "labels/s0",
-      _labels_mask: "labels_mask/s0",
+      _raw: "raw/s1",
+      _labels: "labels/s1",
+      _labels_mask: "labels_mask/s1",
     },
     array_specs: {
       _raw: interpolatable_array_spec,
