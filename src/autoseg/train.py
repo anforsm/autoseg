@@ -339,6 +339,7 @@ def main(rank, config):
         overwrite_checkpoints=config["overwrite_checkpoints"],
         save_best=config["save_best"],
         learning_rate=config["learning_rate"],
+        update_steps=config["update_steps"],
     )
 
     if MULTI_GPU:
