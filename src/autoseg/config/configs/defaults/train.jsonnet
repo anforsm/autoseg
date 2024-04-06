@@ -9,12 +9,12 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     model_outputs: ["affs"],
     // definition for what variables the model expects
     model_inputs: ["raw"],
-    update_steps: 10000,
-    log_snapshot_every: 100,
-    save_every: 1000, # save model every x iterations
+    update_steps: 200000,
+    log_snapshot_every: 1000,
+    save_every: 10000, # save model every x iterations
     overwrite_checkpoints: false,
     val_log: 1000,
-    num_val_samples: 10,
+    num_val_samples: 100,
     save_best: true,
     learning_rate: 5e-5,
     loss: {
@@ -22,10 +22,11 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
       _inputs: ["affs", "gt_affs", "affs_weights"],
     },
     train_dataloader: {
-      batch_size: 8,
+      batch_size: 1,
       parallel: true,
       num_workers: 10,
       precache_per_worker: 1,
+      use_gunpowder_precache: true,
       # change shapes to
       #input_image_shape: [48, 196, 196],
       input_image_shape: [36, 212, 212],
@@ -37,6 +38,10 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
       log_images: ["raw", "labels", "gt_affs", "affs"],
       wandb: true,
     },
-    val_dataloader: self.train_dataloader + minimal_pipeline
+    val_dataloader: self.train_dataloader + minimal_pipeline + {
+      # can't use 2 dataloaders with gunpowder pipeines?
+      parallel: false,
+      use_gunpowder_precache: false,
+    }
   }
 }

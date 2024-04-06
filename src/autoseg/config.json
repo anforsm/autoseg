@@ -393,7 +393,7 @@
                 "gt_lsds",
                 "lsds"
             ],
-            "wandb": true
+            "wandb": false
         },
         "loss": {
             "_inputs": [
@@ -419,7 +419,7 @@
         "save_best": true,
         "save_every": 1000,
         "train_dataloader": {
-            "batch_size": 8,
+            "batch_size": 1,
             "input_image_shape": [
                 36,
                 212,
@@ -432,11 +432,12 @@
                 120
             ],
             "parallel": true,
-            "precache_per_worker": 1
+            "precache_per_worker": 1,
+            "use_gunpowder_precache": true
         },
         "update_steps": 10000,
         "val_dataloader": {
-            "batch_size": 8,
+            "batch_size": 1,
             "input_image_shape": [
                 36,
                 212,
@@ -609,7 +610,8 @@
                     }
                 ]
             },
-            "precache_per_worker": 1
+            "precache_per_worker": 1,
+            "use_gunpowder_precache": false
         },
         "val_log": 1000
     }

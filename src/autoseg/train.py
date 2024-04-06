@@ -187,7 +187,7 @@ def train(
                 model.eval()
                 avg_loss = 0
                 num_val_batches = 10
-                for _, batch in zip(range(num_val_batches), iter(val_dataloader)):
+                for i, batch in zip(range(num_val_batches), iter(val_dataloader)):
                     prediction, loss = batch_predict(
                         model,
                         batch,
@@ -216,20 +216,33 @@ def train(
 
 def dataloader_from_config(dataset, config):
     if config["parallel"]:
+        if config["use_gunpowder_precache"]:
+            import gunpowder as gp
+
+            dataset.pipeline += gp.PreCache(
+                num_workers=config["num_workers"],
+                cache_size=config["precache_per_worker"] * config["num_workers"],
+            )
+            return DataLoader(
+                dataset=dataset,
+                collate_fn=collate,
+                pin_memory=False,
+            )
+
         return DataLoader(
             dataset=dataset,
             collate_fn=collate,
             batch_size=config["batch_size"],
             num_workers=config["num_workers"],
             prefetch_factor=config["precache_per_worker"],
-            pin_memory=True,
+            pin_memory=False,
         )
     else:
         return DataLoader(
             dataset=dataset,
             collate_fn=collate,
             batch_size=config["batch_size"],
-            pin_memory=True,
+            pin_memory=False,
         )
 
 
