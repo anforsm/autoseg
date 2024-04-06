@@ -1,4 +1,5 @@
 import os
+import random
 
 import torch
 import torch.nn as nn
@@ -23,6 +24,10 @@ from autoseg.datasets.utils import multisample_collate as collate
 from autoseg.transforms.gp_parser import snake_case_to_camel_case
 from autoseg.log import Logger
 from autoseg.train_utils import get_2D_snapshot, save_zarr_snapshot
+
+torch.manual_seed(1337)
+np.random.seed(1337)
+random.seed(1337)
 
 try:
     mp.set_start_method("spawn")

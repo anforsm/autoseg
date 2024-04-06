@@ -383,7 +383,7 @@
             "lsds_weights"
         ],
         "learning_rate": 5e-05,
-        "log_snapshot_every": 100,
+        "log_snapshot_every": 1000,
         "logging": {
             "log_images": [
                 "raw",
@@ -393,7 +393,7 @@
                 "gt_lsds",
                 "lsds"
             ],
-            "wandb": false
+            "wandb": true
         },
         "loss": {
             "_inputs": [
@@ -414,10 +414,10 @@
             "lsds"
         ],
         "multi_gpu": false,
-        "num_val_samples": 10,
+        "num_val_samples": 100,
         "overwrite_checkpoints": false,
         "save_best": true,
-        "save_every": 1000,
+        "save_every": 10000,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
@@ -435,7 +435,7 @@
             "precache_per_worker": 1,
             "use_gunpowder_precache": true
         },
-        "update_steps": 10000,
+        "update_steps": 200000,
         "val_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
@@ -449,7 +449,7 @@
                 120,
                 120
             ],
-            "parallel": true,
+            "parallel": false,
             "pipeline": {
                 "_order": [
                     "source",
