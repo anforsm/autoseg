@@ -70,9 +70,33 @@
                         3,
                         3
                     ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
                 ]
             ],
             "kernel_size_up": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
                 [
                     [
                         3,
@@ -115,8 +139,8 @@
                 10
             ]
         },
-        "name": "3D Model With LSD",
-        "path": "out/3DEM_TESTING/"
+        "name": "UNet_extra",
+        "path": "out/UNet_extra/"
     },
     "pipeline": {
         "_order": [
@@ -155,8 +179,8 @@
                         1.570796
                     ],
                     "scale_interval": [
-                        0.5,
-                        2
+                        0.9,
+                        1.1
                     ],
                     "subsample": 4
                 }
@@ -393,7 +417,7 @@
                 "gt_lsds",
                 "lsds"
             ],
-            "wandb": true
+            "wandb": false
         },
         "loss": {
             "_inputs": [

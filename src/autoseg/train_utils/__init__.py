@@ -100,6 +100,8 @@ def get_2D_snapshot(volumes, center_crop=True):
         try:
             Image.fromarray(volume)
         except Exception as e:
+            print(volume)
+            print(volume.shape)
             print("Failed to create image for ", name)
             print(e)
             exit()

@@ -183,7 +183,11 @@ def train(
             logger.push({"images": list(images)})
 
             zarrs = save_zarr_snapshot(
-                Path(snapshot_dir) / "snapshots.zarr", f"{step}", image_tensors
+                (
+                    Path("snapshots") / Path(snapshot_dir) / Path("snapshots.zarr")
+                ).as_posix(),
+                f"{step}",
+                image_tensors,
             )
             logger.push({"zarrs": zarrs})
 
@@ -352,6 +356,7 @@ def main(rank, config):
         save_best=config["save_best"],
         learning_rate=config["learning_rate"],
         update_steps=config["update_steps"],
+        snapshot_dir=root_config["model"]["name"],
     )
 
     if MULTI_GPU:

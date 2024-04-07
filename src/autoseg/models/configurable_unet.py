@@ -33,12 +33,19 @@ class ConfigurableUNet(torch.nn.Module):
             kernel_size_down=kernel_size_down,
             kernel_size_up=kernel_size_up,
             constant_upsample=True,
+            activation="GELU",
             num_heads=1,
         )
 
         self.heads = torch.nn.ModuleList(
             [
-                ConvPass(num_fmaps, shape, [[1, 1, 1]], activation="Sigmoid")
+                ConvPass(
+                    num_fmaps,
+                    shape,
+                    [[1, 1, 1]],
+                    activation="Sigmoid",
+                    normalization=None,
+                )
                 for shape in output_shapes
             ]
         )

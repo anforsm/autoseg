@@ -1,5 +1,9 @@
 from PIL.Image import Image
-from collections import Iterable
+
+try:
+    from collections import Iterable
+except ImportError:
+    from collections.abc import Iterable
 
 
 class Logger:

@@ -6,7 +6,13 @@ import torch.nn as nn
 
 class ConvPass(torch.nn.Module):
     def __init__(
-        self, in_channels, out_channels, kernel_sizes, activation, padding="valid"
+        self,
+        in_channels,
+        out_channels,
+        kernel_sizes,
+        activation,
+        normalization="BatchNorm",
+        padding="valid",
     ):
         super(ConvPass, self).__init__()
 
@@ -34,6 +40,10 @@ class ConvPass(torch.nn.Module):
 
             if activation is not None:
                 layers.append(activation())
+
+            if normalization is not None:
+                norms = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
+                layers.append(norms[self.dims](out_channels))
 
         self.conv_pass = torch.nn.Sequential(*layers)
 

@@ -4,8 +4,9 @@ import _jsonnet
 
 
 def get_curr_dir():
-    # return "/scratch/09699/anforsm/github/autoseg/src/autoseg/config"
-    return "/home/anton/github/autoseg/src/autoseg/config"
+    config_path = os.environ.get("AUTOSEG_CONFIG_PATH")
+    if config_path is not None:
+        return config_path
     return os.path.dirname(os.path.realpath(__file__))
 
 

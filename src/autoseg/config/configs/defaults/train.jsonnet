@@ -24,8 +24,8 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     train_dataloader: {
       batch_size: 1,
       parallel: true,
-      num_workers: 10,
-      precache_per_worker: 1,
+      num_workers: 20,
+      precache_per_worker: 2,
       use_gunpowder_precache: true,
       # change shapes to
       #input_image_shape: [48, 196, 196],
@@ -36,7 +36,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     },
     logging: {
       log_images: ["raw", "labels", "gt_affs", "affs"],
-      wandb: true,
+      wandb: false,
     },
     val_dataloader: self.train_dataloader + minimal_pipeline + {
       # can't use 2 dataloaders with gunpowder pipeines?
