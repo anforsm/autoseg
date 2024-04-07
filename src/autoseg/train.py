@@ -133,6 +133,7 @@ def train(
     overwrite_checkpoints=True,
     save_best=True,
 ):
+    master_process = not MULTI_GPU or DEVICE == "cuda:0"
     # crit = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -157,7 +158,7 @@ def train(
 
         # Log training loss n wandb
 
-        if not logger is None:
+        if not logger is None and master_process:
             logger.push(
                 {
                     "step": step,
@@ -167,7 +168,7 @@ def train(
                 }
             )
 
-        if step % log_snapshot_every == 0:
+        if step % log_snapshot_every == 0 and master_process:
             image_tensors = {}
             source_dict = prediction | {
                 name: val for name, val in zip(batch_outputs, batch)
@@ -183,11 +184,11 @@ def train(
             logger.push({"zarrs": zarrs})
 
         # Save model
-        if step % save_every == 0:
+        if step % save_every == 0 and master_process:
             save_model(model, step=step, overwrite_checkpoints=overwrite_checkpoints)
 
         # Log validation and snapshots
-        if step % val_log == 0 and val_dataloader is not None:
+        if step % val_log == 0 and val_dataloader is not None and master_process:
             with torch.no_grad():
                 model.eval()
                 avg_loss = 0
@@ -210,12 +211,12 @@ def train(
                     lowest_val_loss = avg_loss
                     save_model(model, save_best=save_best)
 
-                if not logger is None:
+                if not logger is None and master_process:
                     logger.push({"val_loss": avg_loss})
 
                 model.train()
 
-        if not logger is None:
+        if not logger is None and master_process:
             logger.log()
 
 
