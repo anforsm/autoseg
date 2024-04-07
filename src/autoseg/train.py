@@ -338,7 +338,9 @@ def main(rank, config):
         model_outputs=model_outputs,
         model_inputs=model_inputs,
         loss_inputs=loss_inputs,
-        logger=logger_from_config(root_config),
+        logger=logger_from_config(root_config)
+        if not MULTI_GPU or DEVICE == "cuda:0"
+        else None,
         log_snapshot_every=config["log_snapshot_every"],
         save_every=config["save_every"],
         val_log=config["val_log"],
