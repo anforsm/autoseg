@@ -1,5 +1,6 @@
 import os
 import random
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -132,6 +133,7 @@ def train(
     val_log=10_000,
     overwrite_checkpoints=True,
     save_best=True,
+    snapshot_dir="./",
 ):
     master_process = not MULTI_GPU or DEVICE == "cuda:0"
     # crit = torch.nn.MSELoss()
@@ -180,7 +182,9 @@ def train(
             images = get_2D_snapshot(image_tensors)
             logger.push({"images": list(images)})
 
-            zarrs = save_zarr_snapshot("snapshots.zarr", f"{step}", image_tensors)
+            zarrs = save_zarr_snapshot(
+                Path(snapshot_dir) / "snapshots.zarr", f"{step}", image_tensors
+            )
             logger.push({"zarrs": zarrs})
 
         # Save model
@@ -291,8 +295,8 @@ def main(rank, config):
     if MULTI_GPU:
         WANDB_LOG = WANDB_LOG and DEVICE == 0
 
-    if WANDB_LOG:
-        wandb.init(project="autoseg")
+    # if WANDB_LOG:
+    #    wandb.init(project="autoseg")
 
     model = Model(config)
     model = model.to(DEVICE)
