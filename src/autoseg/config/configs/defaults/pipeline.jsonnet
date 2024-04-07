@@ -27,7 +27,7 @@
       {elastic_augment: {
         control_point_spacing: [1, 50, 50],
         jitter_sigma: [0, 5, 5],
-        scale_interval: [0.5, 2.0],
+        scale_interval: [0.9, 1.1],
         rotation_interval: [0, 3.141592 / 2],
         subsample: 4
       }},
