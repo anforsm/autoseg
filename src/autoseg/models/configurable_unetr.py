@@ -31,6 +31,7 @@ class ConfigurableUNETR(torch.nn.Module):
         # normalization=None,
         **kwargs
     ):
+        print("Output shapes", output_shapes)
         super().__init__()
 
         num_fmaps = 12

@@ -9,8 +9,8 @@
                 10
             ]
         },
-        "name": "UNet s1",
-        "path": "checkpoints/UNet s1/"
+        "name": "UNet s2",
+        "path": "checkpoints/UNet s2/"
     },
     "pipeline": {
         "_order": [
@@ -33,8 +33,8 @@
         ],
         "_voxel_size": [
             50,
-            4,
-            4
+            8,
+            8
         ],
         "augment": [
             {
@@ -166,8 +166,8 @@
                             "coordinate": {
                                 "_positional": [
                                     50,
-                                    4,
-                                    4
+                                    8,
+                                    8
                                 ]
                             }
                         }
@@ -181,8 +181,8 @@
                             "coordinate": {
                                 "_positional": [
                                     50,
-                                    4,
-                                    4
+                                    8,
+                                    8
                                 ]
                             }
                         }
@@ -196,8 +196,8 @@
                             "coordinate": {
                                 "_positional": [
                                     50,
-                                    4,
-                                    4
+                                    8,
+                                    8
                                 ]
                             }
                         }

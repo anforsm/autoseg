@@ -32,9 +32,10 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         if class_ == "UNETR":
             self.model = ConfigurableUNETR(
                 image_shape=config["training"]["train_dataloader"]["input_image_shape"],
-                input_dim=1,
-                output_dim=12,
-                patch_size=16,
+                **model_config["hyperparameters"]
+                # input_dim=1,
+                # output_dim=12,
+                # patch_size=16,
                 # embed_dim=32,
                 # num_heads=1
             )
