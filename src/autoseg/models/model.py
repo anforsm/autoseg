@@ -90,8 +90,8 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
-        self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
-        # self.from_pretrained(Path(self.hf_path), cache_dir=MODELS_PATH)
+        # self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
+        self.from_pretrained(Path(self.path) / Path("best"))#, cache_dir=MODELS_PATH)
 
     def forward(self, input):
         return self.model(input)

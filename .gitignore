@@ -167,3 +167,4 @@ out*/
 
 checkpoints/
 config.yaml
+*.graphml

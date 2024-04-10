@@ -23,6 +23,9 @@ import sys
 from typing import List
 from typing import TypedDict
 
+#import logging
+#logging.basicConfig(level=logging.INFO)
+
 from predict_blockwise import predict_blockwise
 
 
@@ -36,7 +39,8 @@ from autoseg.config import read_config
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 from autoseg.datasets.utils import get_voxel_size, get_shape
 
-CONFIG_PATH = "defaults"
+#CONFIG_PATH = "defaults"
+CONFIG_PATH = "autoseg/examples/lsd"
 
 
 Z_RES = 50  # nm / px, arbitrary
@@ -264,9 +268,10 @@ if __name__ == "__main__":
                 f"/{i}" if num_source_configs > 1 else ""
             )
 
-            output_size = Coordinate(
+            shape_increase = Coordinate(config["predict"]["shape_increase"])
+            output_size = (Coordinate(
                 config["training"]["train_dataloader"]["output_image_shape"]
-            ) * Coordinate(resolution)
+            ) + shape_increase) * Coordinate(resolution)
             shape = get_shape(input_zarr["path"], input_zarr["dataset"])
             print(output_size, shape, resolution)
 
@@ -276,11 +281,11 @@ if __name__ == "__main__":
                 total_roi=gp.Roi(
                     (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
                 ),
-                write_size=Coordinate(shape) * Coordinate(resolution),
+                write_size=output_size,
                 delete=True,
                 voxel_size=Coordinate(resolution),
                 num_channels=output_config["num_channels"],
-                # compressor={"id": "blosc"},
+                compressor={"id": "blosc"},
                 # force_exact_write_size=True,
                 dtype="uint8",
             )

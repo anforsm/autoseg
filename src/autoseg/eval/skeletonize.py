@@ -5,6 +5,9 @@ import funlib.persistence
 import kimimaro
 import networkx as nx
 
+from autoseg.datasets.load_dataset import get_dataset_path
+
+
 
 def skeletonize(labels_file, labels_ds, teasar_params=None):
     if teasar_params is None:
@@ -103,7 +106,8 @@ if __name__ == "__main__":
         "max_paths": 300,  # default None
     }
 
-    skels = skeletonize("../oblique.zarr", "labels/s0", params)
+    path = get_dataset_path("SynapseWeb/kh2015/oblique").as_posix()
+    skels = skeletonize(path, "labels/s0", params)
 
     out_f = f"./skel.graphml"
     os.makedirs(os.path.dirname(out_f), exist_ok=True)

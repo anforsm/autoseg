@@ -86,6 +86,10 @@ def predict_blockwise(
     pipeline += gp.Pad(raw, None, mode="reflect")
     pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
     pipeline += gp.Unsqueeze([raw])  # Add 1d batch dim
+    #pipeline += gp.PreCache(
+    #    cache_size=10,
+    #    num_workers=10
+    #)
     pipeline += gp.torch.Predict(
         model,
         inputs={"input": raw},
@@ -117,6 +121,8 @@ def predict_blockwise(
             num_workers=1,
         )
     else:
+        pass
+        #pipeline += gp.PrintProfilingStats()
         pipeline += gp.Scan(chunk_request)
 
     with gp.build(pipeline):
