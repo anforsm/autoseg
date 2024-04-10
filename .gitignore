@@ -166,3 +166,4 @@ daisy_logs/
 out*/
 
 checkpoints/
+config.yaml
