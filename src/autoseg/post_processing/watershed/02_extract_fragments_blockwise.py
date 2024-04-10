@@ -17,6 +17,7 @@ from pathlib import Path
 from funlib.geometry import Coordinate, Roi
 from funlib.persistence import open_ds, prepare_ds
 from funlib.persistence.graphs import SQLiteGraphDataBase, PgSQLGraphDatabase
+from funlib.persistence.types import Vec
 
 logging.basicConfig(level=logging.INFO)
 
@@ -198,6 +199,8 @@ def extract_fragments(config: dict) -> bool:
     # Create / Open RAG DB
     logging.info(msg="Creating RAG DB...")
     if "rag_path" in config:
+        print("Using SQLite")
+        exit()
         # SQLiteGraphDatabase
         rag_provider = SQLiteGraphDataBase(
             Path(config["rag_path"]),
@@ -212,13 +215,14 @@ def extract_fragments(config: dict) -> bool:
     else:
         # PgSQLGraphDatabase
         rag_provider = PgSQLGraphDatabase(
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="position",
             db_name=config["db_name"],
             db_host=config["db_host"],
             db_user=config["db_user"],
             db_password=config["db_password"],
             db_port=config["db_port"],
             mode="w",
+            node_attrs={"position": Vec(int, 3)},
             nodes_table=config["nodes_table"],
             edges_table=config["edges_table"],
             edge_attrs={"merge_score": float, "agglomerated": bool},
