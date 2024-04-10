@@ -1,146 +1,16 @@
 {
     "model": {
-        "class": "UNet",
+        "class": "UNETR",
         "hf_path": null,
         "hyperparameters": {
-            "downsample_factors": [
-                [
-                    1,
-                    2,
-                    2
-                ],
-                [
-                    1,
-                    2,
-                    2
-                ],
-                [
-                    2,
-                    2,
-                    2
-                ]
-            ],
-            "fmap_inc_factor": 5,
             "in_channels": 1,
-            "kernel_size_down": [
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ]
-            ],
-            "kernel_size_up": [
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ],
-                [
-                    [
-                        3,
-                        3,
-                        3
-                    ],
-                    [
-                        3,
-                        3,
-                        3
-                    ]
-                ]
-            ],
             "output_shapes": [
                 3,
                 10
             ]
         },
-        "name": "UNet_extra",
-        "path": "out/UNet_extra/"
+        "name": "UNet s1",
+        "path": "checkpoints/UNet s1/"
     },
     "pipeline": {
         "_order": [
@@ -160,6 +30,11 @@
             "LABELS_MASK",
             "GT_LSDS",
             "LSDS_WEIGHTS"
+        ],
+        "_voxel_size": [
+            50,
+            4,
+            4
         ],
         "augment": [
             {
@@ -223,7 +98,6 @@
             {
                 "add_local_shape_descriptor": {
                     "descriptor": "GT_LSDS",
-                    "downsample": 2,
                     "labels_mask": "LABELS_MASK",
                     "lsds_mask": "LSDS_WEIGHTS",
                     "segmentation": "LABELS",
@@ -257,79 +131,119 @@
         ],
         "source": [
             [
-                [
-                    {
-                        "zarr_source": {
-                            "array_specs": {
-                                "_labels": {
-                                    "array_spec": {
-                                        "interpolatable": false
-                                    }
-                                },
-                                "_labels_mask": {
-                                    "array_spec": {
-                                        "interpolatable": false
-                                    }
-                                },
-                                "_raw": {
-                                    "array_spec": {
-                                        "interpolatable": true
-                                    }
+                {
+                    "zarr_source": {
+                        "array_specs": {
+                            "_labels_mask_original": {
+                                "array_spec": {
+                                    "interpolatable": false
                                 }
                             },
-                            "datasets": {
-                                "_labels": "labels/s1",
-                                "_labels_mask": "labels_mask/s1",
-                                "_raw": "raw/s1"
+                            "_labels_original": {
+                                "array_spec": {
+                                    "interpolatable": false
+                                }
                             },
-                            "store": "SynapseWeb/kh2015/apical"
-                        }
-                    },
-                    {
-                        "pad": {
-                            "key": "RAW",
-                            "size": null
-                        }
-                    },
-                    {
-                        "pad": {
-                            "key": "LABELS",
-                            "size": {
-                                "coordinate": {
-                                    "_positional": [
-                                        450,
-                                        290,
-                                        290
-                                    ]
+                            "_raw_original": {
+                                "array_spec": {
+                                    "interpolatable": true
                                 }
                             }
-                        }
-                    },
-                    {
-                        "pad": {
-                            "key": "LABELS_MASK",
-                            "size": {
-                                "coordinate": {
-                                    "_positional": [
-                                        450,
-                                        290,
-                                        290
-                                    ]
-                                }
+                        },
+                        "datasets": {
+                            "_labels_mask_original": "labels_mask/s0",
+                            "_labels_original": "labels/s0",
+                            "_raw_original": "raw/s0"
+                        },
+                        "store": "SynapseWeb/kh2015/apical"
+                    }
+                },
+                {
+                    "resample": {
+                        "source": "RAW_ORIGINAL",
+                        "target": "RAW",
+                        "target_voxel_size": {
+                            "coordinate": {
+                                "_positional": [
+                                    50,
+                                    4,
+                                    4
+                                ]
                             }
-                        }
-                    },
-                    {
-                        "random_location": {
-                            "mask": "LABELS_MASK",
-                            "min_masked": 0.7
                         }
                     }
-                ]
-            ],
-            {
-                "random_provider": {}
-            }
+                },
+                {
+                    "resample": {
+                        "source": "LABELS_ORIGINAL",
+                        "target": "LABELS",
+                        "target_voxel_size": {
+                            "coordinate": {
+                                "_positional": [
+                                    50,
+                                    4,
+                                    4
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "resample": {
+                        "source": "LABELS_MASK_ORIGINAL",
+                        "target": "LABELS_MASK",
+                        "target_voxel_size": {
+                            "coordinate": {
+                                "_positional": [
+                                    50,
+                                    4,
+                                    4
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "pad": {
+                        "key": "RAW",
+                        "size": null
+                    }
+                },
+                {
+                    "pad": {
+                        "key": "LABELS",
+                        "size": {
+                            "coordinate": {
+                                "_positional": [
+                                    450,
+                                    304,
+                                    304
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "pad": {
+                        "key": "LABELS_MASK",
+                        "size": {
+                            "coordinate": {
+                                "_positional": [
+                                    450,
+                                    304,
+                                    304
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "random_location": {
+                        "mask": "LABELS_MASK",
+                        "min_masked": 0.7
+                    }
+                }
+            ]
         ],
         "target": [
             {
@@ -407,7 +321,7 @@
             "lsds_weights"
         ],
         "learning_rate": 5e-05,
-        "log_snapshot_every": 1000,
+        "log_snapshot_every": 2500,
         "logging": {
             "log_images": [
                 "raw",
@@ -441,37 +355,37 @@
         "num_val_samples": 100,
         "overwrite_checkpoints": false,
         "save_best": true,
-        "save_every": 10000,
+        "save_every": 25000,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
-                36,
-                212,
-                212
+                48,
+                208,
+                208
             ],
-            "num_workers": 10,
+            "num_workers": 20,
             "output_image_shape": [
-                4,
-                120,
-                120
+                48,
+                208,
+                208
             ],
             "parallel": true,
-            "precache_per_worker": 1,
+            "precache_per_worker": 2,
             "use_gunpowder_precache": true
         },
         "update_steps": 200000,
         "val_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
-                36,
-                212,
-                212
+                48,
+                208,
+                208
             ],
-            "num_workers": 10,
+            "num_workers": 20,
             "output_image_shape": [
-                4,
-                120,
-                120
+                48,
+                208,
+                208
             ],
             "parallel": false,
             "pipeline": {
@@ -496,7 +410,6 @@
                     {
                         "add_local_shape_descriptor": {
                             "descriptor": "GT_LSDS",
-                            "downsample": 2,
                             "labels_mask": "LABELS_MASK",
                             "lsds_mask": "LSDS_WEIGHTS",
                             "segmentation": "LABELS",
@@ -550,9 +463,9 @@
                                     }
                                 },
                                 "datasets": {
-                                    "_labels": "labels/s1",
-                                    "_labels_mask": "labels_mask/s1",
-                                    "_raw": "raw/s1"
+                                    "_labels": "labels/s0",
+                                    "_labels_mask": "labels_mask/s0",
+                                    "_raw": "raw/s0"
                                 },
                                 "store": "SynapseWeb/kh2015/oblique"
                             }
@@ -634,9 +547,9 @@
                     }
                 ]
             },
-            "precache_per_worker": 1,
+            "precache_per_worker": 2,
             "use_gunpowder_precache": false
         },
-        "val_log": 1000
+        "val_log": 2500
     }
 }

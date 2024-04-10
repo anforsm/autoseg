@@ -1,6 +1,7 @@
 import torch
 from pathlib import Path
 from .configurable_unet import ConfigurableUNet
+from .configurable_unetr import ConfigurableUNETR
 from .unets import UNETR
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
@@ -21,17 +22,18 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         self.name = model_config["name"]
         self.path = model_config["path"]
         self.hf_path = model_config["hf_path"]
-        model_config["hyperparameters"]["downsample_factors"] = tuple(
-            tuple(x) for x in model_config["hyperparameters"]["downsample_factors"]
-        )
+        if "downsample_factors" in model_config["hyperparameters"]:
+            model_config["hyperparameters"]["downsample_factors"] = tuple(
+                tuple(x) for x in model_config["hyperparameters"]["downsample_factors"]
+            )
 
         if class_ == "UNet":
             self.model = ConfigurableUNet(**model_config["hyperparameters"])
         if class_ == "UNETR":
-            self.model = UNETR(
-                img_shape=config["training"]["train_dataloader"]["input_image_shape"],
+            self.model = ConfigurableUNETR(
+                image_shape=config["training"]["train_dataloader"]["input_image_shape"],
                 input_dim=1,
-                output_dim=3,
+                output_dim=12,
                 patch_size=16,
                 # embed_dim=32,
                 # num_heads=1

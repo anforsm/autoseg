@@ -1,7 +1,9 @@
 local default = import "autoseg/examples/lsd";
+local model = import "autoseg/user_configs/anton/models/unetr";
 
 {}
  + default
+ + model.get_model_config()
  + {
   training+: {
     update_steps: 200000,

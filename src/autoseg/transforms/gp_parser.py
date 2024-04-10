@@ -149,6 +149,10 @@ class GunpowderParser:
                 if "pad" in kwargs and kwargs["pad"] is not None:
                     kwargs["pad"] = gp.Coordinate(kwargs["pad"])
 
+            if node_name == "DownSample" or node_name == "UpSample":
+                if "factor" in kwargs:
+                    kwargs["factor"] = tuple(kwargs["factor"])
+
             node = self.get_node(node_name)(**kwargs)
 
             if node_name == "ArrayKey":

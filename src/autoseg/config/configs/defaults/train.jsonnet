@@ -27,12 +27,12 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
       num_workers: 20,
       precache_per_worker: 2,
       use_gunpowder_precache: true,
-      # change shapes to
+      # FOR UNET
       #input_image_shape: [48, 196, 196],
-      input_image_shape: [36, 212, 212],
-      output_image_shape: [4, 120, 120],
-      #output_image_shape: [12, 120, 120],
       #output_image_shape: [16, 104, 104],
+      # FOR UNETR
+      input_image_shape: [48, 208, 208],
+      output_image_shape: [48, 208, 208],
     },
     logging: {
       log_images: ["raw", "labels", "gt_affs", "affs"],

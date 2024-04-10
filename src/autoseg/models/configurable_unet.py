@@ -7,6 +7,7 @@ class ConfigurableUNet(torch.nn.Module):
         self,
         in_channels=1,
         output_shapes=[3],
+        num_fmaps=12,
         fmap_inc_factor=5,
         downsample_factors=((1, 2, 2), (1, 2, 2), (2, 2, 2)),
         kernel_size_down=(
@@ -20,10 +21,10 @@ class ConfigurableUNet(torch.nn.Module):
             ((3, 3, 3), (3, 3, 3)),
             ((3, 3, 3), (3, 3, 3)),
         ),
+        activation="ReLU",
+        normalization=None,
     ):
         super().__init__()
-
-        num_fmaps = 12
 
         self.unet = UNet(
             in_channels=in_channels,
@@ -33,7 +34,8 @@ class ConfigurableUNet(torch.nn.Module):
             kernel_size_down=kernel_size_down,
             kernel_size_up=kernel_size_up,
             constant_upsample=True,
-            activation="GELU",
+            activation=activation,
+            normalization=normalization,
             num_heads=1,
         )
 

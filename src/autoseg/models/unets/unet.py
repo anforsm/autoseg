@@ -205,6 +205,7 @@ class UNet(torch.nn.Module):
         num_heads=1,
         constant_upsample=False,
         padding="valid",
+        normalization=None,
     ):
         """Create a U-Net::
 
@@ -341,6 +342,7 @@ class UNet(torch.nn.Module):
                     kernel_size_down[level],
                     activation=activation,
                     padding=padding,
+                    normalization=normalization,
                 )
                 for level in range(self.num_levels)
             ]
@@ -401,6 +403,7 @@ class UNet(torch.nn.Module):
                             kernel_size_up[level],
                             activation=activation,
                             padding=padding,
+                            normalization=normalization,
                         )
                         for level in range(self.num_levels - 1)
                     ]

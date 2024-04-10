@@ -1,6 +1,7 @@
 import os
 import random
 from pathlib import Path
+import sys
 
 import torch
 import torch.nn as nn
@@ -363,14 +364,19 @@ def main(rank, config):
         destroy_process_group()
 
 
-config = read_config(CONFIG_PATH)
-import json
-
-json.dump(config, open("config.json", "w"), indent=4)
-MULTI_GPU = config["training"]["multi_gpu"]
-WANDB_LOG = config["training"]["logging"]["wandb"]
-
 if __name__ == "__main__":
+    try:
+        config_path = sys.argv[1]
+    except IndexError:
+        config_path = CONFIG_PATH
+
+    config = read_config(config_path)
+    import json
+
+    json.dump(config, open("config.json", "w"), indent=4)
+    MULTI_GPU = config["training"]["multi_gpu"]
+    WANDB_LOG = config["training"]["logging"]["wandb"]
+
     if WANDB_LOG:
         import wandb
 
