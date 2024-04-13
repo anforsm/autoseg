@@ -32,6 +32,15 @@
           }}
         ]
       ],
+    },
+    predict+: {
+      output: [
+        {
+          path: "predictions/" + name + "oblique.zarr",
+          dataset: "affs",
+          num_channels: 3,
+        }
+      ]
     }
   }
 }

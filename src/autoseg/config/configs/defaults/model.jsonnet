@@ -1,6 +1,6 @@
 {get_model_config(model_name="3DEM_TESTING") ::
   {model: {
-    name: "UNet_extra",
+    name: "UNet_extra_latest_2",
     path: "checkpoints/" + self.name + "/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
@@ -21,8 +21,8 @@
           [[3, 3, 3], [3, 3, 3]],
           [[3, 3, 3], [3, 3, 3]],
       ],
-      activation: "GELU",
-      normalization: "BatchNorm",
+      #activation: "GELU",
+      #normalization: "BatchNorm",
     }
   }},
 }

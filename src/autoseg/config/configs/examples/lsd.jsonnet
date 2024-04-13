@@ -20,8 +20,8 @@ local lsd_target = {lsd_target: [
  + default
  + {
   pipeline+: {
-    _order+: ["lsd_target"],
-    _outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
+    #_order+: ["lsd_target"],
+    #_outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
   } + lsd_target,
 
   model+: {

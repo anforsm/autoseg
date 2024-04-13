@@ -73,7 +73,9 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def save_to_local(self, **kwargs):
         subpath = self.get_subname(**kwargs)
-        self.save_pretrained(Path(self.path) / Path(subpath))
+        path = Path(self.path) / Path(subpath)
+        self.save_pretrained(path)
+        torch.save(self.state_dict(), path.as_posix() + "/ckpt.pt")
 
     def load(self):
         if Path(self.path).exists():
@@ -90,8 +92,14 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
+        path = Path(self.path) / Path("step-9900") / "ckpt.pt"
+        weights = torch.load(path.as_posix())
+        self.load_state_dict(weights)
+        print(path)
         # self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
-        self.from_pretrained(Path(self.path) / Path("best"))#, cache_dir=MODELS_PATH)
+        #self.from_pretrained(Path(self.path) / Path("best"))#, cache_dir=MODELS_PATH)
+        #self.from_pretrained(Path(self.path) / Path("step-9900"))#, cache_dir=MODELS_PATH)
 
     def forward(self, input):
+        #print(torch.min(input), torch.max(input))
         return self.model(input)

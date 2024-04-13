@@ -215,14 +215,14 @@ def extract_fragments(config: dict) -> bool:
     else:
         # PgSQLGraphDatabase
         rag_provider = PgSQLGraphDatabase(
-            position_attribute="position",
+            position_attribute="center",
             db_name=config["db_name"],
             db_host=config["db_host"],
             db_user=config["db_user"],
             db_password=config["db_password"],
             db_port=config["db_port"],
             mode="w",
-            node_attrs={"position": Vec(int, 3)},
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config["nodes_table"],
             edges_table=config["edges_table"],
             edge_attrs={"merge_score": float, "agglomerated": bool},

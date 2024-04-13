@@ -1,16 +1,122 @@
 {
     "model": {
-        "class": "UNETR",
+        "class": "UNet",
         "hf_path": null,
         "hyperparameters": {
+            "downsample_factors": [
+                [
+                    1,
+                    2,
+                    2
+                ],
+                [
+                    1,
+                    2,
+                    2
+                ],
+                [
+                    2,
+                    2,
+                    2
+                ]
+            ],
+            "fmap_inc_factor": 5,
             "in_channels": 1,
+            "kernel_size_down": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ]
+            ],
+            "kernel_size_up": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ]
+            ],
             "output_shapes": [
                 3,
                 10
             ]
         },
-        "name": "UNet s2",
-        "path": "checkpoints/UNet s2/"
+        "name": "UNet_extra_latest_2",
+        "path": "checkpoints/UNet_extra_latest_2/"
     },
     "pipeline": {
         "_order": [
@@ -30,11 +136,6 @@
             "LABELS_MASK",
             "GT_LSDS",
             "LSDS_WEIGHTS"
-        ],
-        "_voxel_size": [
-            50,
-            8,
-            8
         ],
         "augment": [
             {
@@ -131,119 +232,79 @@
         ],
         "source": [
             [
-                {
-                    "zarr_source": {
-                        "array_specs": {
-                            "_labels_mask_original": {
-                                "array_spec": {
-                                    "interpolatable": false
+                [
+                    {
+                        "zarr_source": {
+                            "array_specs": {
+                                "_labels": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_labels_mask": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_raw": {
+                                    "array_spec": {
+                                        "interpolatable": true
+                                    }
                                 }
                             },
-                            "_labels_original": {
-                                "array_spec": {
-                                    "interpolatable": false
-                                }
+                            "datasets": {
+                                "_labels": "labels/s0",
+                                "_labels_mask": "labels_mask/s0",
+                                "_raw": "raw/s0"
                             },
-                            "_raw_original": {
-                                "array_spec": {
-                                    "interpolatable": true
+                            "store": "SynapseWeb/kh2015/apical"
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "RAW",
+                            "size": null
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
                                 }
                             }
-                        },
-                        "datasets": {
-                            "_labels_mask_original": "labels_mask/s0",
-                            "_labels_original": "labels/s0",
-                            "_raw_original": "raw/s0"
-                        },
-                        "store": "SynapseWeb/kh2015/apical"
-                    }
-                },
-                {
-                    "resample": {
-                        "source": "RAW_ORIGINAL",
-                        "target": "RAW",
-                        "target_voxel_size": {
-                            "coordinate": {
-                                "_positional": [
-                                    50,
-                                    8,
-                                    8
-                                ]
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS_MASK",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
                             }
                         }
-                    }
-                },
-                {
-                    "resample": {
-                        "source": "LABELS_ORIGINAL",
-                        "target": "LABELS",
-                        "target_voxel_size": {
-                            "coordinate": {
-                                "_positional": [
-                                    50,
-                                    8,
-                                    8
-                                ]
-                            }
+                    },
+                    {
+                        "random_location": {
+                            "mask": "LABELS_MASK",
+                            "min_masked": 0.7
                         }
                     }
-                },
-                {
-                    "resample": {
-                        "source": "LABELS_MASK_ORIGINAL",
-                        "target": "LABELS_MASK",
-                        "target_voxel_size": {
-                            "coordinate": {
-                                "_positional": [
-                                    50,
-                                    8,
-                                    8
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "pad": {
-                        "key": "RAW",
-                        "size": null
-                    }
-                },
-                {
-                    "pad": {
-                        "key": "LABELS",
-                        "size": {
-                            "coordinate": {
-                                "_positional": [
-                                    450,
-                                    304,
-                                    304
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "pad": {
-                        "key": "LABELS_MASK",
-                        "size": {
-                            "coordinate": {
-                                "_positional": [
-                                    450,
-                                    304,
-                                    304
-                                ]
-                            }
-                        }
-                    }
-                },
-                {
-                    "random_location": {
-                        "mask": "LABELS_MASK",
-                        "min_masked": 0.7
-                    }
-                }
-            ]
+                ]
+            ],
+            {
+                "random_provider": {}
+            }
         ],
         "target": [
             {
@@ -287,7 +348,7 @@
             {
                 "dataset": "preds/affs",
                 "num_channels": 3,
-                "path": "predict_3gpu.zarr"
+                "path": "/tmp/oblique_prediction.zarr"
             }
         ],
         "outputs": [
@@ -299,15 +360,16 @@
         ],
         "shape_increase": [
             0,
-            80,
-            80
+            800,
+            800
         ],
         "source": [
             {
                 "dataset": "raw/s0",
-                "path": "/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr"
+                "path": "SynapseWeb/kh2015/oblique"
             }
-        ]
+        ],
+        "use_latest": true
     },
     "training": {
         "batch_outputs": [
@@ -321,7 +383,7 @@
             "lsds_weights"
         ],
         "learning_rate": 5e-05,
-        "log_snapshot_every": 2500,
+        "log_snapshot_every": 100,
         "logging": {
             "log_images": [
                 "raw",
@@ -331,7 +393,7 @@
                 "gt_lsds",
                 "lsds"
             ],
-            "wandb": false
+            "wandb": true
         },
         "loss": {
             "_inputs": [
@@ -352,40 +414,40 @@
             "lsds"
         ],
         "multi_gpu": false,
-        "num_val_samples": 100,
+        "num_val_samples": 10,
         "overwrite_checkpoints": false,
         "save_best": true,
-        "save_every": 25000,
+        "save_every": 300,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
-                48,
-                208,
-                208
+                36,
+                212,
+                212
             ],
             "num_workers": 20,
             "output_image_shape": [
-                48,
-                208,
-                208
+                4,
+                120,
+                120
             ],
             "parallel": true,
             "precache_per_worker": 2,
             "use_gunpowder_precache": true
         },
-        "update_steps": 200000,
+        "update_steps": 10000,
         "val_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
-                48,
-                208,
-                208
+                36,
+                212,
+                212
             ],
             "num_workers": 20,
             "output_image_shape": [
-                48,
-                208,
-                208
+                4,
+                120,
+                120
             ],
             "parallel": false,
             "pipeline": {
@@ -550,6 +612,6 @@
             "precache_per_worker": 2,
             "use_gunpowder_precache": false
         },
-        "val_log": 2500
+        "val_log": 1000
     }
 }

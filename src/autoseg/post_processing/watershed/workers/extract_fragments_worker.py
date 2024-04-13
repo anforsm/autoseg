@@ -389,14 +389,12 @@ def watershed_in_block(
     # store nodes
     rag = rag_provider[block.write_roi]
     rag.add_nodes_from([
-        (node, {
-            'center_z': c[0],
-            'center_y': c[1],
-            'center_x': c[2]
-            }
+        (node, {"center": c}
         )
         for node, c in fragment_centers.items()
     ])
+    logging.warning("DEBUGGING LINE ")
+    logging.warning(str(rag) + str(block) + str(block.write_roi))
     rag_provider.write_graph(rag,block.write_roi)
 
 def extract_fragments_worker(input_config):
@@ -447,8 +445,9 @@ def extract_fragments_worker(input_config):
         # SQLiteGraphDatabase
         rag_provider = SQLiteGraphDataBase(
             Path(config['rag_path']),
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="center",
             mode="r+",
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config['nodes_table'],
             edges_table=config['edges_table'],
             edge_attrs={"merge_score": float, "agglomerated": bool}
@@ -457,14 +456,14 @@ def extract_fragments_worker(input_config):
     else:
         # PgSQLGraphDatabase
         rag_provider = PgSQLGraphDatabase(
-            position_attribute="position",
+            position_attribute="center",
             db_name=config['db_name'],
             db_host=config['db_host'],
             db_user=config['db_user'],
             db_password=config['db_password'],
             db_port=config['db_port'],
             mode="r+",
-            node_attrs={"position": Vec(int, 3)},
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config['nodes_table'],
             edges_table=config['edges_table'],
             edge_attrs={"merge_score": float, "agglomerated": bool}

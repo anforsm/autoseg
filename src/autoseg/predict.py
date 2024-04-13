@@ -240,10 +240,16 @@ def predict_zarr(
             raise RuntimeError("Blockwise prediction failed")
 
 
-config = read_config(CONFIG_PATH)
 
 
 if __name__ == "__main__":
+    try:
+        config_path = sys.argv[1]
+    except IndexError:
+        config_path = CONFIG_PATH
+
+    config = read_config(config_path)
+
     num_source_configs = len(config["predict"]["source"])
     model_outputs = config["training"]["model_outputs"]
 

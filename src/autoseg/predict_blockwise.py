@@ -107,8 +107,9 @@ def predict_blockwise(
     output_dir = Path(output_path).parent.as_posix()
     output_filename = output_path
     pipeline += gp.ZarrWrite(
-        output_dir=output_dir,
-        output_filename=output_filename,
+        store=output_path,
+        #output_dir=output_dir,
+        #output_filename=output_filename,
         dataset_names={ak: o_ds for ak, o_ds in zip(array_keys, output_datasets)},
     )
     if multi_gpu:
