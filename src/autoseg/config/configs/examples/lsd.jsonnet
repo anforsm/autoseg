@@ -9,10 +9,6 @@ local lsd_target = {lsd_target: [
     sigma: 80,
     #downsample: 2,
   }},
-  #{pre_cache: {
-  #  cache_size: 80,
-  #  num_workers: 80,
-  #}}
 ]};
 
 # Returns
@@ -20,8 +16,8 @@ local lsd_target = {lsd_target: [
  + default
  + {
   pipeline+: {
-    #_order+: ["lsd_target"],
-    #_outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
+    _order+: ["lsd_target"],
+    _outputs+: ["GT_LSDS", "LSDS_WEIGHTS"],
   } + lsd_target,
 
   model+: {

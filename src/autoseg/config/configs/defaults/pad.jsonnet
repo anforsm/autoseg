@@ -17,6 +17,6 @@
   }},
   {random_location: {
     mask: "LABELS_MASK",
-    min_masked: 1, 
+    min_masked: 0.7,
   }}
 ]

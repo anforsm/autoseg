@@ -4,8 +4,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
   {
     multi_gpu: false,
     // definition for what variables each training batch yields
-    #batch_outputs: ["raw", "labels", "gt_affs", "affs_weights", "affs_mask", "labels_mask"],
-    batch_outputs: ["raw", "labels", "labels_mask"],
+    batch_outputs: ["raw", "labels", "gt_affs", "affs_weights", "affs_mask", "labels_mask"],
     // definition for what variables the model yields
     model_outputs: ["affs"],
     // definition for what variables the model expects
@@ -24,7 +23,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     },
     train_dataloader: {
       batch_size: 1,
-      parallel: false,
+      parallel: true,
       num_workers: 20,
       precache_per_worker: 2,
       use_gunpowder_precache: true,
@@ -40,7 +39,7 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     },
     logging: {
       log_images: ["raw", "labels", "gt_affs", "affs"],
-      wandb: true,
+      wandb: false,
     },
     val_dataloader: self.train_dataloader + minimal_pipeline + {
       # can't use 2 dataloaders with gunpowder pipeines?

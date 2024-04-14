@@ -6,19 +6,15 @@
     local pad = import "autoseg/defaults/pad",
     local zarrsource = import "autoseg/defaults/zarrsource",
 
-    #_order: ["source", "normalize", "augment", "target", "post"],
-    _order: ["source", "normalize", "post"],
-    #_outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
-    _outputs: ["RAW", "LABELS", "LABELS_MASK"],
+    _order: ["source", "normalize", "augment", "target", "post"],
+    _outputs: ["RAW", "LABELS", "GT_AFFS", "AFFS_WEIGHTS", "GT_AFFS_MASK", "LABELS_MASK"],
 
     source: [
-      zarrsource.zarr_source("SynapseWeb/kh2015/oblique"),
-      #[
-      #  [zarrsource.zarr_source("SynapseWeb/kh2015/oblique")] + pad,
-      #  #[zarrsource.zarr_source("SynapseWeb/kh2015/apical")] + pad,
-      #],
-      #{random_provider: {}}
-    ] + pad,
+      [
+        [zarrsource.zarr_source("SynapseWeb/kh2015/apical")] + pad,
+      ],
+      {random_provider: {}}
+    ],
 
     normalize: [
       {normalize: {
@@ -83,7 +79,7 @@
       }},
       {unsqueeze: {
         arrays: ["RAW"],
-        #axis: 0,
+        axis: 0,
       }}
     ]
   }
