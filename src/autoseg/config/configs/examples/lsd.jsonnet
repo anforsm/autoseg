@@ -9,10 +9,6 @@ local lsd_target = {lsd_target: [
     sigma: 80,
     #downsample: 2,
   }},
-  #{pre_cache: {
-  #  cache_size: 80,
-  #  num_workers: 80,
-  #}}
 ]};
 
 # Returns

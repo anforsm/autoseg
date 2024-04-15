@@ -168,3 +168,4 @@ out*/
 checkpoints/
 config.yaml
 *.graphml
+artifacts/

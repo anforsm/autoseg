@@ -2,6 +2,7 @@ import os
 import random
 from pathlib import Path
 import sys
+import json
 
 import torch
 import torch.nn as nn
@@ -26,6 +27,7 @@ from autoseg.datasets.utils import multisample_collate as collate
 from autoseg.transforms.gp_parser import snake_case_to_camel_case
 from autoseg.log import Logger
 from autoseg.train_utils import get_2D_snapshot, save_zarr_snapshot
+from autoseg.utils import get_artifact_base_path
 
 torch.manual_seed(1337)
 np.random.seed(1337)
@@ -134,7 +136,7 @@ def train(
     val_log=10_000,
     overwrite_checkpoints=True,
     save_best=True,
-    snapshot_dir="./",
+    snapshot_dir="",
 ):
     master_process = not MULTI_GPU or DEVICE == "cuda:0"
     # crit = torch.nn.MSELoss()
@@ -184,9 +186,7 @@ def train(
             logger.push({"images": list(images)})
 
             zarrs = save_zarr_snapshot(
-                (
-                    Path("snapshots") / Path(snapshot_dir) / Path("snapshots.zarr")
-                ).as_posix(),
+                (Path(snapshot_dir) / Path("snapshots.zarr")).as_posix(),
                 f"{step}",
                 image_tensors,
             )
@@ -332,6 +332,7 @@ def main(rank, config):
     )
 
     root_config = config
+    base_path = get_artifact_base_path(config)
     config = config["training"]
     batch_outputs = config["batch_outputs"]
     model_outputs = config["model_outputs"]
@@ -357,7 +358,7 @@ def main(rank, config):
         save_best=config["save_best"],
         learning_rate=config["learning_rate"],
         update_steps=config["update_steps"],
-        snapshot_dir=root_config["model"]["name"],
+        snapshot_dir=base_path + "snapshots",
     )
 
     if MULTI_GPU:
@@ -373,7 +374,8 @@ if __name__ == "__main__":
     config = read_config(config_path)
     import json
 
-    json.dump(config, open("config.json", "w"), indent=4)
+    with open(get_artifact_base_path(config) + "config.json", "w") as f:
+        json.dump(config, f, indent=4)
     MULTI_GPU = config["training"]["multi_gpu"]
     WANDB_LOG = config["training"]["logging"]["wandb"]
 

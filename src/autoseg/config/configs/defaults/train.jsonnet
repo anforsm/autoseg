@@ -9,12 +9,12 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     model_outputs: ["affs"],
     // definition for what variables the model expects
     model_inputs: ["raw"],
-    update_steps: 200000,
-    log_snapshot_every: 1000,
-    save_every: 10000, # save model every x iterations
+    update_steps: 10000,
+    log_snapshot_every: 100,
+    save_every: 300, # save model every x iterations
     overwrite_checkpoints: false,
     val_log: 1000,
-    num_val_samples: 100,
+    num_val_samples: 10,
     save_best: true,
     learning_rate: 5e-5,
     loss: {

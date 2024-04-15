@@ -13,6 +13,7 @@ from pathlib import Path
 from funlib.geometry import Coordinate
 from funlib.persistence import open_ds
 from funlib.persistence.graphs import SQLiteGraphDataBase, PgSQLGraphDatabase
+from funlib.persistence.types import Vec
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,8 +32,11 @@ def agglomerate_in_block(
 
     # get the sub-{affs, fragments, graph} to work on
     affs = affs.intersect(block.read_roi)
+    logging.info("Got intersection")
     fragments = fragments.to_ndarray(affs.roi, fill_value=0)
+    logging.info("Got ndarray")
     rag = rag_provider[affs.roi]
+    logging.info("Got rag")
 
     # waterz uses memory proportional to the max label in fragments, therefore
     # we relabel them here and use those
@@ -40,6 +44,7 @@ def agglomerate_in_block(
         fragments,
         return_backwards_map=True)
 
+    logging.info("Relabeled")
     logging.debug("affs shape: %s", affs.shape)
     logging.debug("fragments shape: %s", fragments.shape)
     logging.debug("fragments num: %d", n)
@@ -64,6 +69,12 @@ def agglomerate_in_block(
     # the given threshold.
 
     # for efficiency, we create one waterz call with both thresholds
+    logging.info("Heading into agglom")
+    logging.info(affs.shape)
+    logging.info(affs)
+    #np.save("affs.npy", affs)
+    #np.save("frags.npy", fragments_relabelled)
+    #exit()
     generator = waterz.agglomerate(
             affs=affs,
             thresholds=[0, threshold],
@@ -73,14 +84,18 @@ def agglomerate_in_block(
             return_merge_history=True,
             return_region_graph=True)
 
+    logging.info("Done with agglom")
     # add edges to RAG
     _, _, initial_rag = next(generator)
+    logging.info("Got initial rag")
     for edge in initial_rag:
         u, v = fragment_relabel_map[edge['u']], fragment_relabel_map[edge['v']]
         u, v = int(u), int(v)
         # this might overwrite already existing edges from neighboring blocks,
         # but that's fine, we only write attributes for edges within write_roi
+        logging.info("Adding edge")
         rag.add_edge(u, v, merge_score=None, agglomerated=True)
+    logging.info("Added to rag")
 
     # agglomerate fragments using affs
     _, merge_history, _ = next(generator)
@@ -89,6 +104,7 @@ def agglomerate_in_block(
     for _, _, _ in generator:
         pass
 
+    logging.info("Creating merge tree")
     # create a merge tree from the merge history
     merge_tree = MergeTree(fragment_relabel_map)
     for merge in merge_history:
@@ -158,8 +174,9 @@ def agglomerate_worker(input_config):
         # SQLiteGraphDatabase
         rag_provider = SQLiteGraphDataBase(
             Path(config['rag_path']),
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="center",
             mode="r+",
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config['nodes_table'],
             edges_table=config['edges_table'],
             edge_attrs={"merge_score": float, "agglomerated": bool}
@@ -168,13 +185,14 @@ def agglomerate_worker(input_config):
     else:
         # PgSQLGraphDatabase
         rag_provider = PgSQLGraphDatabase(
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="center",
             db_name=config['db_name'],
             db_host=config['db_host'],
             db_user=config['db_user'],
             db_password=config['db_password'],
             db_port=config['db_port'],
             mode="r+",
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config['nodes_table'],
             edges_table=config['edges_table'],
             edge_attrs={"merge_score": float, "agglomerated": bool}

@@ -5,8 +5,11 @@ from .configurable_unetr import ConfigurableUNETR
 from .unets import UNETR
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
+import json
+import os
 
 from autoseg.datasets.load_dataset import ROOT_PATH
+from autoseg.utils import get_artifact_base_path
 
 MODELS_PATH = ROOT_PATH / "models"
 
@@ -72,13 +75,24 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         self.push_to_hub(self.hf_path, commit_message=commit)
 
     def save_to_local(self, **kwargs):
-        subpath = self.get_subname(**kwargs)
-        self.save_pretrained(Path(self.path) / Path(subpath))
+        subpath_for_checkpoint = self.get_subname(**kwargs)
+        path = (
+            Path(get_artifact_base_path({"model": {"name": self.name}}))
+            / Path(self.path)
+            / Path(subpath_for_checkpoint)
+        ).as_posix()
+        print(path)
+        os.makedirs(path, exist_ok=True)
+        torch.save(
+            self.state_dict(),
+            path + "/ckpt.pt",
+        )
+        # self.save_pretrained(path)
 
-    def load(self):
+    def load(self, **kwargs):
         if Path(self.path).exists():
             print("Loading from local")
-            self.load_from_local()
+            self.load_from_local(**kwargs)
         else:
             try:
                 self.load_from_hf()
@@ -89,9 +103,21 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         if self.hf_path is not None:
             self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
-    def load_from_local(self):
-        # self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
-        self.from_pretrained(Path(self.path) / Path("best"))#, cache_dir=MODELS_PATH)
+    def load_from_local(self, checkpoint=None, **kwargs):
+        if checkpoint is None:
+            path = (
+                Path(get_artifact_base_path()) / Path(self.path) / Path("best/ckpt.pt")
+            )
+        else:
+            path = (
+                Path(get_artifact_base_path())
+                / Path(self.path)
+                / Path(checkpoint)
+                / Path("ckpt.pt")
+            )
+        weights = torch.load(path.as_posix())
+        self.load_state_dict(weights)
+        print(path)
 
     def forward(self, input):
         return self.model(input)

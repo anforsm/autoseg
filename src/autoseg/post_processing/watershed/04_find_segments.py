@@ -14,6 +14,7 @@ from funlib.segment.graphs.impl import connected_components
 from funlib.geometry import Roi
 from funlib.persistence import open_ds
 from funlib.persistence.graphs import SQLiteGraphDataBase, PgSQLGraphDatabase
+from funlib.persistence.types import Vec
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -79,8 +80,9 @@ def find_segments(config: dict) -> bool:
         # SQLiteGraphDatabase
         graph_provider = SQLiteGraphDataBase(
             Path(config["rag_path"]),
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="center",
             mode="r",
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config["nodes_table"],
             edges_table=config["edges_table"],
             edge_attrs={"merge_score": float, "agglomerated": bool},
@@ -89,13 +91,14 @@ def find_segments(config: dict) -> bool:
     else:
         # PgSQLGraphDatabase
         graph_provider = PgSQLGraphDatabase(
-            position_attributes=["center_z", "center_y", "center_x"],
+            position_attribute="center",
             db_name=config["db_name"],
             db_host=config["db_host"],
             db_user=config["db_user"],
             db_password=config["db_password"],
             db_port=config["db_port"],
             mode="r",
+            node_attrs={"center": Vec(int, 3)},
             nodes_table=config["nodes_table"],
             edges_table=config["edges_table"],
             edge_attrs={"merge_score": float, "agglomerated": bool},

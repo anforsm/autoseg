@@ -9,6 +9,7 @@ import time
 from funlib.geometry import Coordinate, Roi
 from funlib.segment.arrays import replace_values
 from funlib.persistence import Array, open_ds, prepare_ds
+from funlib.persistence.types import Vec
 
 
 logging.getLogger().setLevel(logging.INFO)

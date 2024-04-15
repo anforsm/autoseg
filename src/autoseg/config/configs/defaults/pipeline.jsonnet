@@ -11,7 +11,6 @@
 
     source: [
       [
-        #[zarrsource.zarr_source("SynapseWeb/kh2015/oblique")] + pad,
         [zarrsource.zarr_source("SynapseWeb/kh2015/apical")] + pad,
       ],
       {random_provider: {}}

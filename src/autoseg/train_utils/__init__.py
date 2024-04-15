@@ -3,6 +3,7 @@ import torch
 from PIL import Image
 from einops import rearrange
 import zarr
+import os
 
 
 def get_random_color():
@@ -113,6 +114,8 @@ def get_2D_snapshot(volumes, center_crop=True):
 
 
 def save_zarr_snapshot(filename, dataset_prefix, volumes, resolution=[1, 1, 1]):
+    os.makedirs(filename, exist_ok=True)
+    print(filename)
     # smallest_shape = get_smallest_volume(volumes.values(), 3)
     largest_shape = get_largest_volume(volumes.values(), 3)
     f = zarr.open(filename, "a")

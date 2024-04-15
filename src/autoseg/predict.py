@@ -19,12 +19,14 @@ import gunpowder as gp
 import zarr
 import numpy as np
 import sys
+import glob
 
 from typing import List
 from typing import TypedDict
 
-#import logging
-#logging.basicConfig(level=logging.INFO)
+# import logging
+# logging.basicConfig(level=logging.INFO)
+from autoseg.utils import get_artifact_base_path
 
 from predict_blockwise import predict_blockwise
 
@@ -39,7 +41,7 @@ from autoseg.config import read_config
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 from autoseg.datasets.utils import get_voxel_size, get_shape
 
-#CONFIG_PATH = "defaults"
+# CONFIG_PATH = "defaults"
 CONFIG_PATH = "autoseg/examples/lsd"
 
 
@@ -161,6 +163,7 @@ def predict_zarr(
     output_image_shape,
     model_outputs,
     num_workers,
+    model_checkpoint_path,
     config,
 ):
     shape_increase = Coordinate(config["predict"]["shape_increase"])
@@ -207,6 +210,7 @@ def predict_zarr(
         "output_roi": (output_roi.offset, output_roi.shape),
         "multi_gpu": True,
         "num_workers": config["predict"]["num_workers"],
+        "model_checkpoint_path": model_checkpoint_path,
     }
 
     if not config["predict"]["multi_gpu"]:
@@ -240,90 +244,136 @@ def predict_zarr(
             raise RuntimeError("Blockwise prediction failed")
 
 
-config = read_config(CONFIG_PATH)
+def get_checkpoint_paths(config):
+    paths = []
+    base_path = get_artifact_base_path(config) + config["model"]["path"]
+
+    checkpoint_steps = glob.glob(base_path + "/step-*")
+    checkpoint_steps = [int(step.split("-")[-1]) for step in checkpoint_steps]
+
+    if (
+        "predict_with_best_checkpoint" in config["predict"]
+        and config["predict"]["predict_with_best_checkpoint"]
+    ):
+        paths.append("best")
+    if (
+        "predict_with_last_checkpoint" in config["predict"]
+        and config["predict"]["predict_with_last_checkpoint"]
+    ):
+        latest = max(checkpoint_steps)
+        paths.append(f"step-{latest}")
+
+    if (
+        "predict_with_every_n_checkpoint" in config["predict"]
+        and config["predict"]["predict_with_every_n_checkpoint"] == 0
+    ):
+        return paths
+
+    for i in range(
+        0, len(checkpoint_steps), config["predict"]["predict_with_every_n_checkpoint"]
+    ):
+        path = f"step-{checkpoint_steps[i]}"
+        if not path in paths:
+            paths.append(path)
+    return paths
 
 
 if __name__ == "__main__":
+    try:
+        config_path = sys.argv[1]
+    except IndexError:
+        config_path = CONFIG_PATH
+
+    config = read_config(config_path)
+
     num_source_configs = len(config["predict"]["source"])
     model_outputs = config["training"]["model_outputs"]
 
-    model = Model(config)
-    model.load()
+    paths = get_checkpoint_paths(config)
 
-    for i in range(num_source_configs):
-        source_config = config["predict"]["source"][i]
-        download_dataset(source_config["path"])
-        # input_zarr = zarr.open(get_dataset_path(source_config["path"]), mode="r")
-        # input_zarr = input_zarr[source_config["dataset"]]
-        input_zarr: ZarrConfig = {
-            "path": get_dataset_path(source_config["path"]),
-            "dataset": source_config["dataset"],
-        }
+    for model_checkpoint_path in paths:
+        model = Model(config)
+        model.load(checkpoint=model_checkpoint_path)
 
-        resolution = get_voxel_size(input_zarr["path"], input_zarr["dataset"])
+        for i in range(num_source_configs):
+            source_config = config["predict"]["source"][i]
+            download_dataset(source_config["path"])
+            # input_zarr = zarr.open(get_dataset_path(source_config["path"]), mode="r")
+            # input_zarr = input_zarr[source_config["dataset"]]
+            input_zarr: ZarrConfig = {
+                "path": get_dataset_path(source_config["path"]),
+                "dataset": source_config["dataset"],
+            }
 
-        output_zarrs = []
-        for output_config in config["predict"]["output"]:
-            out_ds = output_config["dataset"] + (
-                f"/{i}" if num_source_configs > 1 else ""
+            resolution = get_voxel_size(input_zarr["path"], input_zarr["dataset"])
+
+            output_zarrs = []
+            for output_config in config["predict"]["output"]:
+                out_ds = output_config["dataset"] + (
+                    f"/{i}" if num_source_configs > 1 else ""
+                )
+
+                shape_increase = Coordinate(config["predict"]["shape_increase"])
+                output_size = (
+                    Coordinate(
+                        config["training"]["train_dataloader"]["output_image_shape"]
+                    )
+                    + shape_increase
+                ) * Coordinate(resolution)
+                shape = get_shape(input_zarr["path"], input_zarr["dataset"])
+                print(output_size, shape, resolution)
+
+                out_path = get_artifact_base_path(config) + output_config["path"]
+                prepare_ds(
+                    filename=out_path,
+                    ds_name=out_ds,
+                    total_roi=gp.Roi(
+                        (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
+                    ),
+                    write_size=output_size,
+                    delete=True,
+                    voxel_size=Coordinate(resolution),
+                    num_channels=output_config["num_channels"],
+                    compressor={"id": "blosc"},
+                    # force_exact_write_size=True,
+                    dtype="uint8",
+                )
+                print(out_path, out_ds)
+                output_zarrs.append(
+                    {
+                        "path": out_path,
+                        "dataset": out_ds,
+                    }
+                )
+
+                # output_zarr = zarr.open(output_config["path"], mode="a")
+                # print(list(output_zarr))
+                # print(list(output_zarr["preds"]))
+                # output_zarr = output_zarr[out_ds]
+                # output_zarrs.append(output_zarr)
+
+                # output_zarr.create_group(
+                #    out_ds,
+                #    #shape=input_zarr.shape,
+                #    overwrite=True,
+                # )
+                # output_zarr = output_zarr[out_ds]
+
+            predict_zarr(
+                input_zarr,
+                output_zarrs,
+                config["training"]["train_dataloader"]["input_image_shape"],
+                config["training"]["train_dataloader"]["output_image_shape"],
+                model_outputs,
+                config["predict"]["num_workers"],
+                model_checkpoint_path,
+                config,
             )
 
-            shape_increase = Coordinate(config["predict"]["shape_increase"])
-            output_size = (Coordinate(
-                config["training"]["train_dataloader"]["output_image_shape"]
-            ) + shape_increase) * Coordinate(resolution)
-            shape = get_shape(input_zarr["path"], input_zarr["dataset"])
-            print(output_size, shape, resolution)
-
-            prepare_ds(
-                filename=output_config["path"],
-                ds_name=out_ds,
-                total_roi=gp.Roi(
-                    (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
-                ),
-                write_size=output_size,
-                delete=True,
-                voxel_size=Coordinate(resolution),
-                num_channels=output_config["num_channels"],
-                compressor={"id": "blosc"},
-                # force_exact_write_size=True,
-                dtype="uint8",
+        # Combine the predictions into one zarr if more than one source
+        if num_source_configs > 1:
+            stack_datasets(
+                output_config["path"],
+                [output_config["dataset"] + f"/{i}" for i in range(num_source_configs)],
+                output_config["dataset"] + "/combined",
             )
-            print(output_config["path"], out_ds)
-            output_zarrs.append(
-                {
-                    "path": output_config["path"],
-                    "dataset": out_ds,
-                }
-            )
-
-            # output_zarr = zarr.open(output_config["path"], mode="a")
-            # print(list(output_zarr))
-            # print(list(output_zarr["preds"]))
-            # output_zarr = output_zarr[out_ds]
-            # output_zarrs.append(output_zarr)
-
-            # output_zarr.create_group(
-            #    out_ds,
-            #    #shape=input_zarr.shape,
-            #    overwrite=True,
-            # )
-            # output_zarr = output_zarr[out_ds]
-
-        predict_zarr(
-            input_zarr,
-            output_zarrs,
-            config["training"]["train_dataloader"]["input_image_shape"],
-            config["training"]["train_dataloader"]["output_image_shape"],
-            model_outputs,
-            config["predict"]["num_workers"],
-            config,
-        )
-
-    # Combine the predictions into one zarr if more than one source
-    if num_source_configs > 1:
-        stack_datasets(
-            output_config["path"],
-            [output_config["dataset"] + f"/{i}" for i in range(num_source_configs)],
-            output_config["dataset"] + "/combined",
-        )

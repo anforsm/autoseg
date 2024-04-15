@@ -46,6 +46,7 @@ def predict_blockwise(
     output_image_size,
     output_roi,
     multi_gpu=False,
+    model_checkpoint_path=None,
     num_workers=10,
 ):
     output_roi = Roi(output_roi[0], output_roi[1])
@@ -67,7 +68,7 @@ def predict_blockwise(
     array_keys = list_to_array_keys(array_keys)
 
     model = Model(config)
-    model.load()
+    model.load(checkpoint=model_checkpoint_path)
     model = model.model
     model = model.to(get_device_id())
     model.eval()
@@ -86,10 +87,10 @@ def predict_blockwise(
     pipeline += gp.Pad(raw, None, mode="reflect")
     pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
     pipeline += gp.Unsqueeze([raw])  # Add 1d batch dim
-    #pipeline += gp.PreCache(
+    # pipeline += gp.PreCache(
     #    cache_size=10,
     #    num_workers=10
-    #)
+    # )
     pipeline += gp.torch.Predict(
         model,
         inputs={"input": raw},
@@ -107,8 +108,9 @@ def predict_blockwise(
     output_dir = Path(output_path).parent.as_posix()
     output_filename = output_path
     pipeline += gp.ZarrWrite(
-        output_dir=output_dir,
-        output_filename=output_filename,
+        store=output_path,
+        # output_dir=output_dir,
+        # output_filename=output_filename,
         dataset_names={ak: o_ds for ak, o_ds in zip(array_keys, output_datasets)},
     )
     if multi_gpu:
@@ -122,7 +124,7 @@ def predict_blockwise(
         )
     else:
         pass
-        #pipeline += gp.PrintProfilingStats()
+        # pipeline += gp.PrintProfilingStats()
         pipeline += gp.Scan(chunk_request)
 
     with gp.build(pipeline):
