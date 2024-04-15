@@ -5,8 +5,11 @@ from .configurable_unetr import ConfigurableUNETR
 from .unets import UNETR
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
+import json
+import os
 
 from autoseg.datasets.load_dataset import ROOT_PATH
+from autoseg.utils import get_artifact_base_path
 
 MODELS_PATH = ROOT_PATH / "models"
 
@@ -73,9 +76,16 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def save_to_local(self, **kwargs):
         subpath_for_checkpoint = self.get_subname(**kwargs)
+        path = (
+            Path(get_artifact_base_path({"model": {"name": self.name}}))
+            / Path(self.path)
+            / Path(subpath_for_checkpoint)
+        ).as_posix()
+        print(path)
+        os.makedirs(path, exist_ok=True)
         torch.save(
             self.state_dict(),
-            (Path(self.path) / Path(subpath_for_checkpoint)).as_posix() + "/ckpt.pt",
+            path + "/ckpt.pt",
         )
         # self.save_pretrained(path)
 
@@ -94,7 +104,9 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
     def load_from_local(self):
-        path = Path(self.path) / Path("step-9900") / "ckpt.pt"
+        path = Path(get_artifact_base_path()) / Path(self.path)
+        # Enumerate through directories in directory
+        # / Path("step-9900") / "ckpt.pt"
         weights = torch.load(path.as_posix())
         self.load_state_dict(weights)
         print(path)

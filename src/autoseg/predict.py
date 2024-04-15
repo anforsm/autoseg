@@ -23,8 +23,9 @@ import sys
 from typing import List
 from typing import TypedDict
 
-#import logging
-#logging.basicConfig(level=logging.INFO)
+# import logging
+# logging.basicConfig(level=logging.INFO)
+from autoseg.utils import get_artifact_base_path
 
 from predict_blockwise import predict_blockwise
 
@@ -39,7 +40,7 @@ from autoseg.config import read_config
 from autoseg.datasets.load_dataset import get_dataset_path, download_dataset
 from autoseg.datasets.utils import get_voxel_size, get_shape
 
-#CONFIG_PATH = "defaults"
+# CONFIG_PATH = "defaults"
 CONFIG_PATH = "autoseg/examples/lsd"
 
 
@@ -240,8 +241,6 @@ def predict_zarr(
             raise RuntimeError("Blockwise prediction failed")
 
 
-
-
 if __name__ == "__main__":
     try:
         config_path = sys.argv[1]
@@ -275,14 +274,16 @@ if __name__ == "__main__":
             )
 
             shape_increase = Coordinate(config["predict"]["shape_increase"])
-            output_size = (Coordinate(
-                config["training"]["train_dataloader"]["output_image_shape"]
-            ) + shape_increase) * Coordinate(resolution)
+            output_size = (
+                Coordinate(config["training"]["train_dataloader"]["output_image_shape"])
+                + shape_increase
+            ) * Coordinate(resolution)
             shape = get_shape(input_zarr["path"], input_zarr["dataset"])
             print(output_size, shape, resolution)
 
+            out_path = get_artifact_base_path(config) + output_config["path"]
             prepare_ds(
-                filename=output_config["path"],
+                filename=out_path,
                 ds_name=out_ds,
                 total_roi=gp.Roi(
                     (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
@@ -295,10 +296,10 @@ if __name__ == "__main__":
                 # force_exact_write_size=True,
                 dtype="uint8",
             )
-            print(output_config["path"], out_ds)
+            print(out_path, out_ds)
             output_zarrs.append(
                 {
-                    "path": output_config["path"],
+                    "path": out_path,
                     "dataset": out_ds,
                 }
             )
