@@ -4,6 +4,9 @@
     num_workers: 6,
     shape_increase: [0, 800, 800],
     use_latest: true,
+    predict_with_every_n_checkpoint: 2,
+    predict_with_best_checkpoint: false,
+    predict_with_last_checkpoint: false,
     source: [
       {
         #path: "/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr",

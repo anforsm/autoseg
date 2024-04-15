@@ -89,10 +89,10 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         )
         # self.save_pretrained(path)
 
-    def load(self):
+    def load(self, **kwargs):
         if Path(self.path).exists():
             print("Loading from local")
-            self.load_from_local()
+            self.load_from_local(**kwargs)
         else:
             try:
                 self.load_from_hf()
@@ -103,16 +103,21 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         if self.hf_path is not None:
             self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
 
-    def load_from_local(self):
-        path = Path(get_artifact_base_path()) / Path(self.path)
-        # Enumerate through directories in directory
-        # / Path("step-9900") / "ckpt.pt"
+    def load_from_local(self, checkpoint=None, **kwargs):
+        if checkpoint is None:
+            path = (
+                Path(get_artifact_base_path()) / Path(self.path) / Path("best/ckpt.pt")
+            )
+        else:
+            path = (
+                Path(get_artifact_base_path())
+                / Path(self.path)
+                / Path(checkpoint)
+                / Path("ckpt.pt")
+            )
         weights = torch.load(path.as_posix())
         self.load_state_dict(weights)
         print(path)
-        # self.load_state_dict(torch.load(self.path + "/pytorch_model.bin"))
-        # self.from_pretrained(Path(self.path) / Path("best"))#, cache_dir=MODELS_PATH)
-        # self.from_pretrained(Path(self.path) / Path("step-9900"))#, cache_dir=MODELS_PATH)
 
     def forward(self, input):
         return self.model(input)
