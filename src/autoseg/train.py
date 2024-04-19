@@ -313,8 +313,8 @@ def main(rank, config):
 
     dataset = GunpowderZarrDataset(
         config=config["pipeline"],
-        input_image_shape=config["training"]["train_dataloader"]["input_image_shape"],
-        output_image_shape=config["training"]["train_dataloader"]["output_image_shape"],
+        input_image_shape=config["model"]["input_image_shape"],
+        output_image_shape=config["model"]["output_image_shape"],
     )
 
     dataloader = dataloader_from_config(
@@ -323,8 +323,8 @@ def main(rank, config):
 
     validation_dataset = GunpowderZarrDataset(
         config=config["training"]["val_dataloader"]["pipeline"],
-        input_image_shape=config["training"]["val_dataloader"]["input_image_shape"],
-        output_image_shape=config["training"]["val_dataloader"]["output_image_shape"],
+        input_image_shape=config["model"]["input_image_shape"],
+        output_image_shape=config["model"]["output_image_shape"],
     )
 
     val_dataloader = dataloader_from_config(

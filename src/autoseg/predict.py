@@ -308,58 +308,61 @@ if __name__ == "__main__":
 
             resolution = get_voxel_size(input_zarr["path"], input_zarr["dataset"])
 
-            output_zarrs = []
-            for output_config in config["predict"]["output"]:
-                out_ds = output_config["dataset"] + (
-                    f"/{i}" if num_source_configs > 1 else ""
-                )
+        output_zarrs = []
+        for output_config in config["predict"]["output"]:
+            out_ds = output_config["dataset"] + (
+                f"/{i}" if num_source_configs > 1 else ""
+            )
 
-                shape_increase = Coordinate(config["predict"]["shape_increase"])
-                output_size = (
-                    Coordinate(
-                        config["training"]["train_dataloader"]["output_image_shape"]
-                    )
-                    + shape_increase
-                ) * Coordinate(resolution)
-                shape = get_shape(input_zarr["path"], input_zarr["dataset"])
-                print(output_size, shape, resolution)
+            shape_increase = Coordinate(config["predict"]["shape_increase"])
+            output_size = (
+                Coordinate(config["training"]["train_dataloader"]["output_image_shape"])
+                + shape_increase
+            ) * Coordinate(resolution)
+            shape = get_shape(input_zarr["path"], input_zarr["dataset"])
+            print(output_size, shape, resolution)
 
-                out_path = Path(get_artifact_base_path(config)) / Path("predictions") / Path(model_checkpoint_path) / Path(output_config["path"])
-                out_path = out_path.resolve().as_posix()
-                prepare_ds(
-                    filename=out_path,
-                    ds_name=out_ds,
-                    total_roi=gp.Roi(
-                        (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
-                    ),
-                    write_size=output_size,
-                    delete=True,
-                    voxel_size=Coordinate(resolution),
-                    num_channels=output_config["num_channels"],
-                    compressor={"id": "blosc"},
-                    # force_exact_write_size=True,
-                    dtype="uint8",
-                )
-                print(out_path, out_ds)
-                output_zarrs.append(
-                    {
-                        "path": out_path,
-                        "dataset": out_ds,
-                    }
-                )
+            out_path = (
+                Path(get_artifact_base_path(config))
+                / Path("predictions")
+                / Path(model_checkpoint_path)
+                / Path(output_config["path"])
+            )
+            out_path = out_path.resolve().as_posix()
+            prepare_ds(
+                filename=out_path,
+                ds_name=out_ds,
+                total_roi=gp.Roi(
+                    (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
+                ),
+                write_size=output_size,
+                delete=True,
+                voxel_size=Coordinate(resolution),
+                num_channels=output_config["num_channels"],
+                compressor={"id": "blosc"},
+                # force_exact_write_size=True,
+                dtype="uint8",
+            )
+            print(out_path, out_ds)
+            output_zarrs.append(
+                {
+                    "path": out_path,
+                    "dataset": out_ds,
+                }
+            )
 
-                # output_zarr = zarr.open(output_config["path"], mode="a")
-                # print(list(output_zarr))
-                # print(list(output_zarr["preds"]))
-                # output_zarr = output_zarr[out_ds]
-                # output_zarrs.append(output_zarr)
+            # output_zarr = zarr.open(output_config["path"], mode="a")
+            # print(list(output_zarr))
+            # print(list(output_zarr["preds"]))
+            # output_zarr = output_zarr[out_ds]
+            # output_zarrs.append(output_zarr)
 
-                # output_zarr.create_group(
-                #    out_ds,
-                #    #shape=input_zarr.shape,
-                #    overwrite=True,
-                # )
-                # output_zarr = output_zarr[out_ds]
+            # output_zarr.create_group(
+            #    out_ds,
+            #    #shape=input_zarr.shape,
+            #    overwrite=True,
+            # )
+            # output_zarr = output_zarr[out_ds]
 
             predict_zarr(
                 input_zarr,

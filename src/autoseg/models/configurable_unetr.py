@@ -60,7 +60,6 @@ class ConfigurableUNETR(torch.nn.Module):
 
     def forward(self, input):
         z = self.unet(input)
-        print("Number of heads: ", len(self.heads))
 
         return tuple(head(z) for head in self.heads)
         # return self.head(z)

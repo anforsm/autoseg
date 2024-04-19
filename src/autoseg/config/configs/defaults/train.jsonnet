@@ -24,8 +24,8 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     train_dataloader: {
       batch_size: 1,
       parallel: true,
-      num_workers: 20,
-      precache_per_worker: 2,
+      num_workers: 80,
+      precache_per_worker: 4,
       use_gunpowder_precache: true,
       # FOR UNET
       # V1

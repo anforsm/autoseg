@@ -34,7 +34,7 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
             self.model = ConfigurableUNet(**model_config["hyperparameters"])
         if class_ == "UNETR":
             self.model = ConfigurableUNETR(
-                image_shape=config["training"]["train_dataloader"]["input_image_shape"],
+                image_shape=config["model"]["input_image_shape"],
                 **model_config["hyperparameters"]
                 # input_dim=1,
                 # output_dim=12,
@@ -106,7 +106,9 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
     def load_from_local(self, checkpoint=None, **kwargs):
         if checkpoint is None:
             path = (
-                Path(get_artifact_base_path({"model": {"name": self.name}})) / Path(self.path) / Path("best/ckpt.pt")
+                Path(get_artifact_base_path({"model": {"name": self.name}}))
+                / Path(self.path)
+                / Path("best/ckpt.pt")
             )
         else:
             path = (

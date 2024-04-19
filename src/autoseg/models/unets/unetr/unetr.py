@@ -85,7 +85,7 @@ class SelfAttention(nn.Module):
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
-    def forward(self, hidden_states):
+    def forward(self, hidden_states, return_raw_scores=False):
         mixed_query_layer = self.query(hidden_states)
         mixed_key_layer = self.key(hidden_states)
         mixed_value_layer = self.value(hidden_states)
@@ -106,7 +106,10 @@ class SelfAttention(nn.Module):
         context_layer = context_layer.view(*new_context_layer_shape)
         attention_output = self.out(context_layer)
         attention_output = self.proj_dropout(attention_output)
-        return attention_output, weights
+        if not return_raw_scores:
+            return attention_output, weights
+        else:
+            return attention_output, weights, attention_scores
 
 
 class Mlp(nn.Module):
