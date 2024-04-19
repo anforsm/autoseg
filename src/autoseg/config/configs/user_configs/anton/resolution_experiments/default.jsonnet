@@ -15,5 +15,8 @@ local default = import "autoseg/examples/lsd";
     logging+: {
       wandb: true
     }
+  },
+  predict+: {
+    shape_increase: [0, 800, 800]
   }
  }

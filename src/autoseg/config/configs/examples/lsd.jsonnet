@@ -21,6 +21,7 @@ local lsd_target = {lsd_target: [
   } + lsd_target,
 
   model+: {
+    name: "UNet_LSD",
     hyperparameters+: {
       output_shapes+: [10]
     }
@@ -33,7 +34,8 @@ local lsd_target = {lsd_target: [
       _inputs+: ["lsds", "gt_lsds", "lsds_weights"],
     },
     logging+: {
-      log_images+: ["gt_lsds", "lsds"]
+      log_images+: ["gt_lsds", "lsds"],
+      wandb: true
     },
 
     val_dataloader+: {

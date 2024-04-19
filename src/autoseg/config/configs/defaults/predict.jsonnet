@@ -2,7 +2,7 @@
   predict: {
     multi_gpu: false,
     num_workers: 6,
-    shape_increase: [0, 800, 800],
+    shape_increase: [0, 400, 400],
     use_latest: true,
     predict_with_every_n_checkpoint: 2,
     predict_with_best_checkpoint: false,

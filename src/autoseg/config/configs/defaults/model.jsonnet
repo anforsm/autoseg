@@ -5,6 +5,8 @@
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
     class: "UNet",
+    input_image_shape: [36, 212, 212],
+    output_image_shape: [4, 120, 120],
     hyperparameters: {
       in_channels: 1,
       output_shapes: [3],

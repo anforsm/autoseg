@@ -1,0 +1,79 @@
+# bootstrap Config
+
+db: # Graph Database config
+  db_name: "" # FILL
+  db_host: ""
+  db_user: ""
+  db_password: ""
+  db_port: 443
+  nodes_table: ""
+  edges_table: ""
+
+
+predict:
+  3d_model:
+    setup_dir: "/scratch1/04101/vvenu/bootstrap/models/3d_model"
+    raw_file: "/scratch1/04101/vvenu/bootstrap/data/apical.zarr"
+    raw_datasets:
+        - ["raw/s2"]
+    iteration: 0
+    out_file: "0.zarr"
+    num_workers: 8
+    num_cache_workers: 1
+
+processing:
+  extract_fragments:
+    affs_file: "0.zarr"
+    affs_dataset: "3d_affs_3000_from_35000"
+    fragments_file: "0.zarr"
+    fragments_dataset: "frags"
+    fragments_in_xy: true
+    background_mask: false
+    mask_thresh: 0.5
+    min_seed_distance: 10
+    epsilon_agglomerate: 0.0
+    filter_fragments: 0.05
+    replace_sections: null
+    mask_file: "/scratch1/04101/vvenu/bootstrap/data/apical.zarr"
+    mask_dataset: "raw_mask/s2"
+    roi_offset: [50,0,0]
+    roi_shape: [9000,16056,15088]
+    block_size: null
+    context: null
+    num_workers: 100
+
+  agglomerate:
+    affs_file: "0.zarr"
+    affs_dataset: "3d_affs_3000_from_35000"
+    fragments_file: "0.zarr"
+    fragments_dataset: "frags"
+    merge_function: "mean"
+    roi_offset: null
+    roi_shape: null
+    block_size: null
+    context: null
+    num_workers: 50
+
+  find_segments:
+    fragments_file: "0.zarr"
+    fragments_dataset: "frags"
+    lut_dir: "luts"
+    roi_offset: null
+    roi_shape: null
+    thresholds_minmax: [0, 1]
+    thresholds_step: 0.05
+    merge_function: "mean"
+    num_workers: 4
+
+  extract_segmentation:
+    fragments_file: "0.zarr"
+    fragments_dataset: "frags"
+    lut_dir: "luts"
+    seg_file: "0.zarr"
+    seg_dataset: "segmentations"
+    thresholds: [0.5]
+    merge_function: "mean"
+    roi_offset: null
+    roi_shape: null
+    block_size: null
+    num_workers: 400

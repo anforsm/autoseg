@@ -82,10 +82,10 @@ def predict_blockwise(
     pipeline = gp.ZarrSource(
         input_path, {raw: input_dataset}, {raw: gp.ArraySpec(interpolatable=True)}
     )
-    # pipeline += gp.Normalize(raw)
-    # pipeline += gp.IntensityScaleShift(raw, 2, -1)
+    pipeline += gp.Normalize(raw)
+    pipeline += gp.IntensityScaleShift(raw, 2, -1)
     pipeline += gp.Pad(raw, None, mode="reflect")
-    # pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
+    pipeline += gp.Unsqueeze([raw])  # Add 1d channel dim
     pipeline += gp.Unsqueeze([raw])  # Add 1d batch dim
     # pipeline += gp.PreCache(
     #    cache_size=10,
