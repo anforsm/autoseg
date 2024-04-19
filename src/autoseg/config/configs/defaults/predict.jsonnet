@@ -6,7 +6,7 @@
     use_latest: true,
     predict_with_every_n_checkpoint: 2,
     predict_with_best_checkpoint: false,
-    predict_with_last_checkpoint: false,
+    predict_with_last_checkpoint: true,
     source: [
       {
         #path: "/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr",
@@ -17,7 +17,7 @@
 
     output: [
       {
-        path: "./oblique_prediction.zarr",
+        path: "oblique_prediction.zarr",
         dataset: "preds/affs",
         num_channels: 3,
         #stacked: true,

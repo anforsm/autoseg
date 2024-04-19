@@ -20,6 +20,7 @@ import zarr
 import numpy as np
 import sys
 import glob
+from pathlib import Path
 
 from typing import List
 from typing import TypedDict
@@ -323,7 +324,8 @@ if __name__ == "__main__":
                 shape = get_shape(input_zarr["path"], input_zarr["dataset"])
                 print(output_size, shape, resolution)
 
-                out_path = get_artifact_base_path(config) + output_config["path"]
+                out_path = Path(get_artifact_base_path(config)) / Path("predictions") / Path(model_checkpoint_path) / Path(output_config["path"])
+                out_path = out_path.resolve().as_posix()
                 prepare_ds(
                     filename=out_path,
                     ds_name=out_ds,

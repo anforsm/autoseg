@@ -106,11 +106,11 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
     def load_from_local(self, checkpoint=None, **kwargs):
         if checkpoint is None:
             path = (
-                Path(get_artifact_base_path()) / Path(self.path) / Path("best/ckpt.pt")
+                Path(get_artifact_base_path({"model": {"name": self.name}})) / Path(self.path) / Path("best/ckpt.pt")
             )
         else:
             path = (
-                Path(get_artifact_base_path())
+                Path(get_artifact_base_path({"model": {"name": self.name}}))
                 / Path(self.path)
                 / Path(checkpoint)
                 / Path("ckpt.pt")
