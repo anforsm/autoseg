@@ -4,7 +4,9 @@ import yaml
 from autoseg.config import read_config
 from autoseg.datasets import get_dataset_path
 from autoseg.utils import get_artifact_base_path
+from autoseg.datasets.utils import get_shape, get_voxel_size
 from pathlib import Path
+from funlib.geometry import Coordinate
 import subprocess
 
 
@@ -17,21 +19,29 @@ if __name__ == "__main__":
         postproc_yaml_config = yaml.safe_load(f)
 
     pred_file = (
-        Path(
-            get_artifact_base_path(config)
-            + "UNet_LSD/predictions/step-9900/oblique_prediction.zarr"
+        (
+            Path(get_artifact_base_path(config))
+            / Path("predictions/step-50000/oblique_prediction.zarr")
         )
         .absolute()
         .as_posix()
     )
+    shape = list(get_shape(pred_file, "preds/affs"))
+    if len(shape) == 4:
+        shape = shape[1:]
+    size = list(Coordinate(shape) * Coordinate(get_voxel_size(pred_file, "preds/affs")))
+    print(size)
 
     p = postproc_yaml_config
-    p["db"]["db_name"] = "anton_UNet_LSD_9900_oblique"
+    p["db"]["db_name"] = "anton_UNet_LSD_9900_oblique".lower()
+    # print(p["processing"]["extract_fra"])
 
     p["processing"]["extract_fragments"]["affs_file"] = pred_file
     p["processing"]["extract_fragments"]["affs_dataset"] = "preds/affs"
     p["processing"]["extract_fragments"]["fragments_file"] = pred_file
     p["processing"]["extract_fragments"]["fragments_dataset"] = "frags"
+    p["processing"]["extract_fragments"]["roi_shape"] = None
+    p["processing"]["extract_fragments"]["roi_offset"] = None
     p["processing"]["extract_fragments"]["mask_file"] = None
     p["processing"]["extract_fragments"]["mask_dataset"] = None
 
@@ -56,26 +66,30 @@ if __name__ == "__main__":
             "python",
             "post_processing/watershed/02_extract_fragments_blockwise.py",
             "post_processing/watershed/temp_config.yaml",
-        ]
+        ],
+        check=True,
     )
     subprocess.run(
         [
             "python",
             "post_processing/watershed/03_agglomerate_blockwise.py",
             "post_processing/watershed/temp_config.yaml",
-        ]
+        ],
+        check=True,
     )
     subprocess.run(
         [
             "python",
             "post_processing/watershed/04_find_segments.py",
             "post_processing/watershed/temp_config.yaml",
-        ]
+        ],
+        check=True,
     )
     subprocess.run(
         [
             "python",
             "post_processing/watershed/05_extract_segments_from_lut.py",
             "post_processing/watershed/temp_config.yaml",
-        ]
+        ],
+        check=True,
     )

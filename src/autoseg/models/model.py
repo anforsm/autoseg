@@ -89,21 +89,7 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
         )
         # self.save_pretrained(path)
 
-    def load(self, **kwargs):
-        if Path(self.path).exists():
-            print("Loading from local")
-            self.load_from_local(**kwargs)
-        else:
-            try:
-                self.load_from_hf()
-            except:
-                pass
-
-    def load_from_hf(self):
-        if self.hf_path is not None:
-            self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
-
-    def load_from_local(self, checkpoint=None, **kwargs):
+    def get_local_path(self, checkpoint=None, **kwargs):
         if checkpoint is None:
             path = (
                 Path(get_artifact_base_path({"model": {"name": self.name}}))
@@ -117,9 +103,26 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
                 / Path(checkpoint)
                 / Path("ckpt.pt")
             )
-        weights = torch.load(path.as_posix())
+        return path.absolute().as_posix()
+
+    def load(self, **kwargs):
+        local_path = self.get_local_path(**kwargs)
+        if Path(local_path).exists():
+            self.load_from_local(local_path, **kwargs)
+        else:
+            try:
+                self.load_from_hf()
+            except:
+                pass
+
+    def load_from_hf(self):
+        if self.hf_path is not None:
+            self.from_pretrained(self.hf_path, cache_dir=MODELS_PATH)
+
+    def load_from_local(self, local_path, checkpoint=None, **kwargs):
+        print(local_path)
+        weights = torch.load(local_path)
         self.load_state_dict(weights)
-        print(path)
 
     def forward(self, input):
         return self.model(input)

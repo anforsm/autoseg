@@ -4,7 +4,7 @@
     num_workers: 6,
     shape_increase: [0, 400, 400],
     use_latest: true,
-    predict_with_every_n_checkpoint: 2,
+    predict_with_every_n_checkpoint: 0,
     predict_with_best_checkpoint: false,
     predict_with_last_checkpoint: true,
     source: [

@@ -8,6 +8,8 @@ from funlib.evaluate import (
 from funlib.geometry import Coordinate, Roi
 from funlib.persistence import open_ds
 from funlib.persistence.graphs import SQLiteGraphDataBase, PgSQLGraphDatabase
+from autoseg.config import read_config
+from autoseg.utils import get_artifact_base_path
 
 import multiprocessing as mp
 
@@ -718,6 +720,13 @@ def parse_str(input_string):
 
 
 if __name__ == "__main__":
+    config = sys.argv[1]
+    config = read_config(config)
+
+    frags_file = Path(get_artifact_base_path(config)) / Path(
+        "predictions/step-50000/oblique_prediction.zarr"
+    )
+    frags_file = frags_file.absolute().as_posix()
     # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
     # frags_file = "test.zarr"
     # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
@@ -726,7 +735,7 @@ if __name__ == "__main__":
     # frags_file = sys.argv[1]
     # frag_str = sys.argv[2]
     # merge_function = sys.argv[3]
-    frags_file = "../oblique.zarr"
+    # frags_file = "../oblique.zarr"
     frag_str = "frags"
     merge_function = "mean"
 
