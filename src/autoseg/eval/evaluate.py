@@ -10,6 +10,7 @@ from funlib.persistence import open_ds
 from funlib.persistence.graphs import SQLiteGraphDataBase, PgSQLGraphDatabase
 from autoseg.config import read_config
 from autoseg.utils import get_artifact_base_path
+from autoseg.datasets import get_dataset_path
 
 import multiprocessing as mp
 
@@ -25,6 +26,8 @@ import time
 import tqdm
 
 import sys
+
+sys.setrecursionlimit(10_000)
 
 sys.path.append("../blockwise")
 from config import db_config, rag_config
@@ -49,12 +52,14 @@ class EvaluateAnnotations:
         thresholds_step=0.20,
         **kwargs,
     ):
-        self.labels = open_ds("../oblique.zarr", "labels/s0")
+        self.labels = open_ds(
+            get_dataset_path("SynapseWeb/kh2015/oblique").as_posix(), "labels/s0"
+        )
         self.fragments = open_ds(fragments_file, fragments_ds)
         self.rag_path = rag_path
         self.edges_table = edges_table
         self.lut_dir = lut_dir
-        self.skeletons_file = "./skel.graphml"
+        self.skeletons_file = "./eval/skel.graphml"
         if roi_offset is not None:
             self.roi = Roi(roi_offset, roi_shape)
         else:
@@ -204,7 +209,7 @@ class EvaluateAnnotations:
 
     def get_site_segment_ids(self, threshold):
         # get fragment-segment LUT
-        lut_name = f"seg_{int(threshold*100)}.npz"
+        lut_name = f"seg_edges_mean_{int(threshold*100)}.npz"
         fragment_segment_lut = np.load(os.path.join(self.lut_dir, lut_name))[
             "fragment_segment_lut"
         ]
@@ -472,7 +477,6 @@ class EvaluateAnnotations:
         edges = rag_provider.read_edges(self.roi, nodes=nodes)
 
         logger.info("RAG contains %d nodes/%d edges", len(nodes), len(edges))
-        print(edges)
 
         rag = nx.Graph()
         node_list = [(n["id"], {"segment_id": n["segment_id"]}) for n in nodes]
@@ -527,7 +531,7 @@ class EvaluateAnnotations:
     #        return rand_voi_report
 
     def compute_rand_voi(self, threshold, return_cluster_scores=True):
-        lut_name = f"seg_{int(threshold*100)}.npz"
+        lut_name = f"seg_edges_mean_{int(threshold*100)}.npz"
         fragment_segment_lut = np.load(os.path.join(self.lut_dir, lut_name))[
             "fragment_segment_lut"
         ]
@@ -539,7 +543,7 @@ class EvaluateAnnotations:
             fragment_segment_lut[1][site_mask],
         )
 
-        labels = self.labels.to_ndarray(self.roi)
+        labels = self.labels.to_ndarray(self.labels.roi)
 
         # ensure same shape
         if seg.shape != labels.shape:
@@ -742,10 +746,11 @@ if __name__ == "__main__":
     results_out_dir = f"./results"
 
     # frags_ds = os.path.join("repost",frag_str,"fragments")
-    frags_ds = "blockwise/frags"
+    frags_ds = "frags"
     # edges_table = "edges_"+merge_function
     # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
-    lut_dir = os.path.join(frags_file, "blockwise", "luts", "fragment_segment")
+    lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
+    print(frags_file, frags_ds)
 
     fragments = open_ds(frags_file, frags_ds)
     roi = fragments.roi
@@ -753,7 +758,7 @@ if __name__ == "__main__":
     roi_shape = roi.get_shape()
     compute_mincut_metric = True
 
-    rag_path = "./skel.graphml"
+    rag_path = "./eval/skel.graphml"
     edges_table = None
     args = None
     evaluate = EvaluateAnnotations(
@@ -770,5 +775,6 @@ if __name__ == "__main__":
     ret = evaluate.evaluate()
     args = parse_str(frag_str)
 
+    os.makedirs(results_out_dir, exist_ok=True)
     with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
         json.dump(args | ret, f, indent=4)
