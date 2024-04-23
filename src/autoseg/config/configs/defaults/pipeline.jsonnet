@@ -24,8 +24,8 @@
 
     augment: [
       {elastic_augment: {
-        control_point_spacing: [1, 50, 50],
-        jitter_sigma: [0, 5, 5],
+        control_point_spacing: [2, 50, 50],
+        jitter_sigma: [0, 2, 2],
         scale_interval: [0.9, 1.1],
         rotation_interval: [0, 3.141592 / 2],
         subsample: 4
@@ -33,8 +33,12 @@
       {simple_augment: {
         transpose_only: [1, 2]
       }},
-      {noise_augment: {
-        array: "RAW",
+      {defect_augment: {
+        prob_missing: 0.03,
+      }},
+      {shift_augment: {
+        prob_slip: 0.03,
+        prob_shift: 0.03
       }},
       {intensity_augment: {
         array: "RAW",

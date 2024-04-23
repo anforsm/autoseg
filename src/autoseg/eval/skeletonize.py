@@ -8,7 +8,6 @@ import networkx as nx
 from autoseg.datasets.load_dataset import get_dataset_path
 
 
-
 def skeletonize(labels_file, labels_ds, teasar_params=None):
     if teasar_params is None:
         teasar_params = {
@@ -43,7 +42,7 @@ def skeletonize(labels_file, labels_ds, teasar_params=None):
         fix_avocados=False,  # default False
         progress=True,  # default False, show progress bar
         parallel=10,  # <= 0 all cpu, 1 single process, 2+ multiprocess
-        parallel_chunk_size=100,  # how many skeletons to process before updating progress bar
+        parallel_chunk_size=10,  # how many skeletons to process before updating progress bar
     )
 
     uniques = np.unique(labels_arr)
@@ -58,6 +57,7 @@ def skeletonize(labels_file, labels_ds, teasar_params=None):
         print("s=", teasar_params["scale"])
         print("c=", teasar_params["const"])
         missing_ids = uniques[~check]
+        print(f"missing ids: {missing_ids}")
         # print(f"missing id
 
         return f"bad_{len(missing_ids)}", skels, roi
@@ -106,10 +106,12 @@ if __name__ == "__main__":
         "max_paths": 300,  # default None
     }
 
-    path = get_dataset_path("SynapseWeb/kh2015/oblique").as_posix()
-    skels = skeletonize(path, "labels/s0", params)
+    path = get_dataset_path("SynapseWeb/kh2015/oblique").as_posix().replace(".zip", "")
+    skels = skeletonize(path, "labels_f_r_eroded", params)
+    # skels = skeletonize(path, "labels_filtered_relabeled", params)
+    # skels = skeletonize(path, "labels/s0", params)
 
-    out_f = f"./skel.graphml"
+    out_f = f"./skel_filtered.graphml"
     os.makedirs(os.path.dirname(out_f), exist_ok=True)
 
     G = convert_to_nx(skels[1], skels[2])

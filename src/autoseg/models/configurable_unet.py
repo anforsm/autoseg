@@ -9,6 +9,7 @@ class ConfigurableUNet(torch.nn.Module):
         output_shapes=[3],
         num_fmaps=12,
         fmap_inc_factor=5,
+        num_fmaps_out=12,
         downsample_factors=((1, 2, 2), (1, 2, 2), (2, 2, 2)),
         kernel_size_down=(
             ((3, 3, 3), (3, 3, 3)),

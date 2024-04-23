@@ -61,7 +61,7 @@ class EvaluateAnnotations:
         self.lut_dir = lut_dir
         self.skeletons_file = "./eval/skel.graphml"
         if roi_offset is not None:
-            self.roi = Roi(roi_offset, roi_shape)
+            self.roi = Roi(roi_offset, roi_shape).intersect(self.labels.roi)
         else:
             self.roi = self.labels.roi
         self.voxel_size = self.labels.voxel_size
