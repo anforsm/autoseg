@@ -145,7 +145,7 @@ def train(
     avg_loss = 0
     lowest_val_loss = float("inf")
 
-    for step, batch in zip(range(update_steps), iter(dataloader)):
+    for step, batch in zip(range(update_steps + 1), iter(dataloader)):
         optimizer.zero_grad()
 
         prediction, loss = batch_predict(

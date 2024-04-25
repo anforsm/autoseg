@@ -22,6 +22,7 @@ class ConfigurableUNet(torch.nn.Module):
             ((3, 3, 3), (3, 3, 3)),
             ((3, 3, 3), (3, 3, 3)),
         ),
+        constant_upsample=True,
         activation="ReLU",
         normalization=None,
     ):
@@ -34,7 +35,7 @@ class ConfigurableUNet(torch.nn.Module):
             downsample_factors=downsample_factors,
             kernel_size_down=kernel_size_down,
             kernel_size_up=kernel_size_up,
-            constant_upsample=True,
+            constant_upsample=constant_upsample,
             activation=activation,
             normalization=normalization,
             num_heads=1,

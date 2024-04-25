@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNet Image Size Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>UNet Image Size Calculator</h1>
+  <button onclick="calculateSizes()">Calculate Sizes</button>
+  <div id="result"></div>
+
+  <script>
+    const downsampleFactors = [[1, 3, 3], [1, 3, 3], [1, 3, 3]];
+    const kernelSizeDown = [
+      [[3, 3, 3], [3, 3, 3]],
+      [[3, 3, 3], [3, 3, 3]],
+      [[3, 3, 3], [3, 3, 3]],
+      [[3, 3, 3], [3, 3, 3]],
+    ];
+    const kernelSizeUp = [
+      [[3, 3, 3], [3, 3, 3]],
+      [[3, 3, 3], [3, 3, 3]],
+      [[3, 3, 3], [3, 3, 3]],
+    ];
+
+    function calculateSizes() {
+      const validSizes = [];
+      const maxSize = 1024; // Adjust this value as needed
+
+      for (let size = 1; size <= maxSize; size++) {
+        let currentSize = size;
+
+        // Check if the size works for downsampling
+        let isValid = true;
+        for (let i = 0; i < downsampleFactors.length; i++) {
+          const downsampleFactor = downsampleFactors[i];
+          const kernelSize = kernelSizeDown[i];
+          for (let j = 0; j < downsampleFactor.length; j++) {
+            const factor = downsampleFactor[j];
+            const kernelDim = kernelSize[j];
+            const maxKernelDim = Math.max(...kernelDim);
+            currentSize = Math.floor((currentSize + factor - maxKernelDim) / factor);
+            if (currentSize < 1) {
+              isValid = false;
+              break;
+            }
+          }
+          if (!isValid) break;
+        }
+
+        // Check if the size works for upsampling
+        if (isValid) {
+          for (let i = kernelSizeUp.length - 1; i >= 0; i--) {
+            const kernelSize = kernelSizeUp[i];
+            const maxKernelDim = Math.max(...kernelSize);
+            const newSize = (currentSize - 1) * 2 + maxKernelDim;
+            currentSize = newSize;
+          }
+          validSizes.push(size);
+        }
+      }
+
+      // Display the result
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `<p>Valid Input Sizes: ${validSizes.join(', ')}</p>`;
+    }
+  </script>
+</body>
+</html>

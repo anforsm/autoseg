@@ -1,0 +1,10 @@
+# set config to be first positional arg
+config=$1
+# run train script
+python train.py $config
+# run prediction script
+python predict.py $config
+# run post processing for fragments etc.
+python post_processign/main.py $config
+# run evaluation script
+python eval/evaluate.py $config

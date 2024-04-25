@@ -3,6 +3,8 @@ import math
 import torch
 import torch.nn as nn
 
+DEBUG = False
+
 
 class ConvPass(torch.nn.Module):
     def __init__(
@@ -90,6 +92,8 @@ class Upsample(torch.nn.Module):
         padding="valid",
     ):
         super(Upsample, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
 
         assert (crop_factor is None) == (
             next_conv_kernel_sizes is None
@@ -121,13 +125,20 @@ class Upsample(torch.nn.Module):
         to do that before (feature maps will be smaller).
         """
 
+        if DEBUG:
+            print(f"factor {factor}")
+            print(f"kernel_sizes {kernel_sizes}")
         shape = x.size()
         spatial_shape = shape[-self.dims :]
+        if DEBUG:
+            print(f"spatial_shape {spatial_shape}")
 
         # the crop that will already be done due to the convolutions
         convolution_crop = tuple(
             sum(ks[d] - 1 for ks in kernel_sizes) for d in range(self.dims)
         )
+        if DEBUG:
+            print(f"convolution_crop {convolution_crop}")
 
         # we need (spatial_shape - convolution_crop) to be a multiple of
         # factor, i.e.:
@@ -149,6 +160,9 @@ class Upsample(torch.nn.Module):
         target_spatial_shape = tuple(
             n * f + c for n, c, f in zip(ns, convolution_crop, factor)
         )
+        target_spatial_shape = spatial_shape
+        if DEBUG:
+            print(f"target_spatial_shape {target_spatial_shape}")
 
         if target_spatial_shape != spatial_shape:
             assert all(
@@ -175,7 +189,16 @@ class Upsample(torch.nn.Module):
         return x[slices]
 
     def forward(self, f_left, g_out):
+        if DEBUG:
+            print(f"in_channels {self.in_channels}")
+            print(f"out_channels {self.out_channels}")
+            print(f"upsample g_out {g_out.shape}")
+
         g_up = self.up(g_out)
+
+        if DEBUG:
+            print(f"upsample g_up {g_up.shape}")
+            print(f"upsample f_left {f_left.shape}")
 
         if self.next_conv_kernel_sizes is not None and self.padding == "valid":
             g_cropped = self.crop_to_factor(
@@ -185,6 +208,9 @@ class Upsample(torch.nn.Module):
             g_cropped = g_up
 
         f_cropped = self.crop(f_left, g_cropped.size()[-self.dims :])
+        if DEBUG:
+            print(f"upsample g_cropped {g_cropped.shape}")
+            print(f"upsample f_cropped {f_cropped.shape}")
 
         return torch.cat([f_cropped, g_cropped], dim=1)
 
@@ -375,7 +401,7 @@ class UNet(torch.nn.Module):
                                 # "trilinear" if constant_upsample else "transposed_conv"
                             ),
                             in_channels=num_fmaps * fmap_inc_factor ** (level + 1),
-                            out_channels=num_fmaps * fmap_inc_factor ** (level + 1),
+                            out_channels=num_fmaps * fmap_inc_factor ** (level),
                             crop_factor=crop_factors[level],
                             next_conv_kernel_sizes=kernel_size_up[level],
                             padding=padding,
@@ -393,8 +419,8 @@ class UNet(torch.nn.Module):
                 nn.ModuleList(
                     [
                         ConvPass(
-                            num_fmaps * fmap_inc_factor**level
-                            + num_fmaps * fmap_inc_factor ** (level + 1),
+                            2 * num_fmaps * fmap_inc_factor**level,
+                            # + num_fmaps * fmap_inc_factor ** (level + 1),
                             (
                                 num_fmaps * fmap_inc_factor**level
                                 if num_fmaps_out is None or level != 0
@@ -419,13 +445,24 @@ class UNet(torch.nn.Module):
         # convolve
         f_left = self.l_conv[i](f_in)
 
+        if DEBUG:
+            print("<=========DOWN===========>")
+            print(f"LEVEL {level}".center(25))
+            print(f"f_in {f_in.shape}".ljust(level * 2))
+            print(f"f_left {f_left.shape}".ljust(level * 2))
+
         # end of recursion
         if level == 0:
             fs_out = [f_left] * self.num_heads
+            if DEBUG:
+                print("end".ljust(level * 2))
+                print(f"fs_out {fs_out[0].shape}".ljust(level * 2))
 
         else:
             # down
             g_in = self.l_down[i](f_left)
+            if DEBUG:
+                print(f"g_in {g_in.shape}".ljust(level * 2))
 
             # nested levels
             gs_out = self.rec_forward(level - 1, g_in)
@@ -438,6 +475,13 @@ class UNet(torch.nn.Module):
             # convolve
             fs_out = [self.r_conv[h][i](fs_right[h]) for h in range(self.num_heads)]
 
+            if DEBUG:
+                print("<============UP==========>")
+                print(f"LEVEL {level}".center(25))
+                print(f"gs_out {gs_out[0].shape}".ljust(level * 2))
+                print(f"fs_right {fs_right[0].shape}".ljust(level * 2))
+                print(f"fs_out {fs_out[0].shape}".ljust(level * 2))
+
         return fs_out
 
     def forward(self, x):
@@ -445,5 +489,6 @@ class UNet(torch.nn.Module):
 
         if self.num_heads == 1:
             return y[0]
+        exit()
 
         return y

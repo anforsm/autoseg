@@ -727,54 +727,66 @@ if __name__ == "__main__":
     config = sys.argv[1]
     config = read_config(config)
 
-    frags_file = Path(get_artifact_base_path(config)) / Path(
-        "predictions/step-50000/oblique_prediction.zarr"
+    # frags_file = Path(get_artifact_base_path(config)) / Path(
+    #    "predictions/step-50000/oblique_prediction.zarr"
+    # )
+    frags_files = glob.glob(
+        f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr"
     )
-    frags_file = frags_file.absolute().as_posix()
-    # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
-    # frags_file = "test.zarr"
-    # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
-    # merge_function = "mean"
+    for frags_file in frags_files:
+        frags_file = Path(frags_file).absolute().as_posix()
+        # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
+        # frags_file = "test.zarr"
+        # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
+        # merge_function = "mean"
 
-    # frags_file = sys.argv[1]
-    # frag_str = sys.argv[2]
-    # merge_function = sys.argv[3]
-    # frags_file = "../oblique.zarr"
-    frag_str = "frags"
-    merge_function = "mean"
+        # frags_file = sys.argv[1]
+        # frag_str = sys.argv[2]
+        # merge_function = sys.argv[3]
+        # frags_file = "../oblique.zarr"
+        frag_str = "frags"
+        merge_function = "mean"
 
-    results_out_dir = f"./results"
+        step = frags_file.split("step-")[1].split("/")[0]
+        results_out_dir = Path(get_artifact_base_path(config)) / Path(
+            f"results/step-{step}"
+        )
+        results_out_dir = results_out_dir.absolute().as_posix() + "/"
+        # results_out_dir = f"./results"
 
-    # frags_ds = os.path.join("repost",frag_str,"fragments")
-    frags_ds = "frags"
-    # edges_table = "edges_"+merge_function
-    # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
-    lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
-    print(frags_file, frags_ds)
+        # frags_ds = os.path.join("repost",frag_str,"fragments")
+        frags_ds = "frags"
+        # edges_table = "edges_"+merge_function
+        # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
+        lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
+        print(frags_file, frags_ds)
+        print(results_out_dir)
 
-    fragments = open_ds(frags_file, frags_ds)
-    roi = fragments.roi
-    roi_offset = roi.get_offset()
-    roi_shape = roi.get_shape()
-    compute_mincut_metric = True
+        fragments = open_ds(frags_file, frags_ds)
+        roi = fragments.roi
+        roi_offset = roi.get_offset()
+        roi_shape = roi.get_shape()
+        compute_mincut_metric = True
 
-    rag_path = "./eval/skel.graphml"
-    edges_table = None
-    args = None
-    evaluate = EvaluateAnnotations(
-        frags_file,
-        frags_ds,
-        rag_path,
-        edges_table,
-        lut_dir,
-        roi_offset,
-        roi_shape,
-        compute_mincut_metric,
-    )
+        # rag_path = "./eval/skel.graphml"
+        rag_path = "/home/anton/github/autoseg/src/autoseg/eval/filtered.graphml"
+        edges_table = None
+        args = None
+        evaluate = EvaluateAnnotations(
+            frags_file,
+            frags_ds,
+            rag_path,
+            edges_table,
+            lut_dir,
+            roi_offset,
+            roi_shape,
+            compute_mincut_metric,
+        )
 
-    ret = evaluate.evaluate()
-    args = parse_str(frag_str)
+        ret = evaluate.evaluate()
+        args = parse_str(frag_str)
 
-    os.makedirs(results_out_dir, exist_ok=True)
-    with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
-        json.dump(args | ret, f, indent=4)
+        os.makedirs(results_out_dir, exist_ok=True)
+        print(results_out_dir)
+        with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
+            json.dump(args | ret, f, indent=4)
