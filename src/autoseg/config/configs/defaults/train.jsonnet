@@ -16,7 +16,11 @@ local minimal_pipeline = import "autoseg/defaults/minimal_pipeline";
     val_log: 1000,
     num_val_samples: 10,
     save_best: true,
-    learning_rate: 5e-5,
+    optimizer: {
+      "AdamW": {
+        lr: 5e-5,
+      }
+    },
     loss: {
       weighted_m_s_e_loss: {},
       _inputs: ["affs", "gt_affs", "affs_weights"],

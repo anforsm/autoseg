@@ -48,6 +48,13 @@ if __name__ == "__main__":
         p["processing"]["extract_fragments"]["roi_offset"] = None
         p["processing"]["extract_fragments"]["mask_file"] = None
         p["processing"]["extract_fragments"]["mask_dataset"] = None
+        if "mask" in config["predict"]:
+            p["processing"]["extract_fragments"]["mask_file"] = config["predict"][
+                "mask"
+            ][0]["path"]
+            p["processing"]["extract_fragments"]["mask_dataset"] = config["predict"][
+                "mask"
+            ][0]["dataset"]
 
         p["processing"]["agglomerate"]["affs_file"] = pred_file
         p["processing"]["agglomerate"]["affs_dataset"] = "preds/affs"

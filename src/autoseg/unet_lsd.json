@@ -1,0 +1,661 @@
+{
+    "evaluation": {
+        "ground_truth_labels": [
+            {
+                "dataset": "labels/s1",
+                "path": "SynapseWeb/kh2015/oblique"
+            }
+        ],
+        "ground_truth_skeletons": "eval/refined_skels.graphml",
+        "method": "hagglom",
+        "results_dir": "results"
+    },
+    "model": {
+        "class": "UNet",
+        "hf_path": null,
+        "hyperparameters": {
+            "activation": "GELU",
+            "constant_upsample": false,
+            "downsample_factors": [
+                [
+                    1,
+                    3,
+                    3
+                ],
+                [
+                    1,
+                    3,
+                    3
+                ],
+                [
+                    1,
+                    3,
+                    3
+                ]
+            ],
+            "fmap_inc_factor": 5,
+            "in_channels": 1,
+            "kernel_size_down": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ]
+            ],
+            "kernel_size_up": [
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ],
+                [
+                    [
+                        3,
+                        3,
+                        3
+                    ],
+                    [
+                        3,
+                        3,
+                        3
+                    ]
+                ]
+            ],
+            "normalization": "LayerNorm",
+            "num_fmaps": 12,
+            "num_fmaps_out": 12,
+            "output_shapes": [
+                3,
+                10
+            ]
+        },
+        "input_image_shape": [
+            84,
+            268,
+            268
+        ],
+        "name": "UNet_LSD_GELU_LayerNorm",
+        "output_image_shape": [
+            56,
+            56,
+            56
+        ],
+        "path": "checkpoints/"
+    },
+    "pipeline": {
+        "_order": [
+            "source",
+            "normalize",
+            "augment",
+            "target",
+            "post",
+            "lsd_target"
+        ],
+        "_outputs": [
+            "RAW",
+            "LABELS",
+            "GT_AFFS",
+            "AFFS_WEIGHTS",
+            "GT_AFFS_MASK",
+            "LABELS_MASK",
+            "GT_LSDS",
+            "LSDS_WEIGHTS"
+        ],
+        "augment": [
+            {
+                "elastic_augment": {
+                    "control_point_spacing": [
+                        2,
+                        50,
+                        50
+                    ],
+                    "jitter_sigma": [
+                        0,
+                        2,
+                        2
+                    ],
+                    "rotation_interval": [
+                        0,
+                        1.570796
+                    ],
+                    "scale_interval": [
+                        0.9,
+                        1.1
+                    ],
+                    "subsample": 4
+                }
+            },
+            {
+                "simple_augment": {
+                    "transpose_only": [
+                        1,
+                        2
+                    ]
+                }
+            },
+            {
+                "defect_augment": {
+                    "intensities": "RAW",
+                    "prob_missing": 0.03
+                }
+            },
+            {
+                "shift_augment": {
+                    "prob_shift": 0.03,
+                    "prob_slip": 0.03,
+                    "sigma": 2
+                }
+            },
+            {
+                "intensity_augment": {
+                    "array": "RAW",
+                    "scale_max": 1.1,
+                    "scale_min": 0.9,
+                    "shift_max": 0.1,
+                    "shift_min": -0.1
+                }
+            },
+            {
+                "smooth_array": {
+                    "array": "RAW"
+                }
+            },
+            {
+                "grow_boundary": {
+                    "labels": "LABELS",
+                    "only_xy": true
+                }
+            }
+        ],
+        "lsd_target": [
+            {
+                "add_local_shape_descriptor": {
+                    "descriptor": "GT_LSDS",
+                    "downsample": 4,
+                    "labels_mask": "LABELS_MASK",
+                    "lsds_mask": "LSDS_WEIGHTS",
+                    "segmentation": "LABELS",
+                    "sigma": 80
+                }
+            }
+        ],
+        "normalize": [
+            {
+                "normalize": {
+                    "array": "RAW"
+                }
+            }
+        ],
+        "post": [
+            {
+                "intensity_scale_shift": {
+                    "array": "RAW",
+                    "scale": 2,
+                    "shift": -1
+                }
+            },
+            {
+                "unsqueeze": {
+                    "arrays": [
+                        "RAW"
+                    ],
+                    "axis": 0
+                }
+            }
+        ],
+        "source": [
+            [
+                [
+                    {
+                        "zarr_source": {
+                            "array_specs": {
+                                "_labels": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_labels_mask": {
+                                    "array_spec": {
+                                        "interpolatable": false
+                                    }
+                                },
+                                "_raw": {
+                                    "array_spec": {
+                                        "interpolatable": true
+                                    }
+                                }
+                            },
+                            "datasets": {
+                                "_labels": "labels/s1",
+                                "_labels_mask": "labels_mask/s1",
+                                "_raw": "raw/s1"
+                            },
+                            "store": "SynapseWeb/kh2015/apical"
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "RAW",
+                            "size": null
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "pad": {
+                            "key": "LABELS_MASK",
+                            "size": {
+                                "coordinate": {
+                                    "_positional": [
+                                        450,
+                                        290,
+                                        290
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "random_location": {
+                            "mask": "LABELS_MASK",
+                            "min_masked": 0.7
+                        }
+                    }
+                ]
+            ],
+            {
+                "random_provider": {}
+            }
+        ],
+        "target": [
+            {
+                "add_affinities": {
+                    "affinities": "GT_AFFS",
+                    "affinities_mask": "GT_AFFS_MASK",
+                    "affinity_neighborhood": [
+                        [
+                            -1,
+                            0,
+                            0
+                        ],
+                        [
+                            0,
+                            -1,
+                            0
+                        ],
+                        [
+                            0,
+                            0,
+                            -1
+                        ]
+                    ],
+                    "labels": "LABELS",
+                    "labels_mask": "LABELS_MASK"
+                }
+            },
+            {
+                "balance_labels": {
+                    "labels": "GT_AFFS",
+                    "mask": "GT_AFFS_MASK",
+                    "scales": "AFFS_WEIGHTS"
+                }
+            }
+        ]
+    },
+    "predict": {
+        "multi_gpu": false,
+        "num_workers": 6,
+        "output": [
+            {
+                "dataset": "preds/affs",
+                "num_channels": 3,
+                "path": "oblique_prediction.zarr"
+            }
+        ],
+        "outputs": [
+            {
+                "dataset": "preds/lsds",
+                "num_channels": 10,
+                "path": "multiout.zarr"
+            }
+        ],
+        "predict_with_best_checkpoint": false,
+        "predict_with_every_n_checkpoint": 1,
+        "predict_with_last_checkpoint": true,
+        "shape_increase": [
+            0,
+            405,
+            405
+        ],
+        "source": [
+            {
+                "dataset": "raw/s1",
+                "path": "SynapseWeb/kh2015/oblique"
+            }
+        ],
+        "use_latest": true
+    },
+    "training": {
+        "batch_outputs": [
+            "raw",
+            "labels",
+            "gt_affs",
+            "affs_weights",
+            "affs_mask",
+            "labels_mask",
+            "gt_lsds",
+            "lsds_weights"
+        ],
+        "learning_rate": 5e-05,
+        "log_snapshot_every": 1000,
+        "logging": {
+            "log_images": [
+                "raw",
+                "labels",
+                "gt_affs",
+                "affs",
+                "gt_lsds",
+                "lsds"
+            ],
+            "wandb": true
+        },
+        "loss": {
+            "_inputs": [
+                "affs",
+                "gt_affs",
+                "affs_weights",
+                "lsds",
+                "gt_lsds",
+                "lsds_weights"
+            ],
+            "weighted_m_s_e_loss": {}
+        },
+        "model_inputs": [
+            "raw"
+        ],
+        "model_outputs": [
+            "affs",
+            "lsds"
+        ],
+        "multi_gpu": false,
+        "num_val_samples": 100,
+        "overwrite_checkpoints": false,
+        "save_best": true,
+        "save_every": 25000,
+        "train_dataloader": {
+            "batch_size": 1,
+            "input_image_shape": [
+                36,
+                212,
+                212
+            ],
+            "num_workers": 80,
+            "output_image_shape": [
+                4,
+                120,
+                120
+            ],
+            "parallel": true,
+            "precache_per_worker": 4,
+            "use_gunpowder_precache": true
+        },
+        "update_steps": 200000,
+        "val_dataloader": {
+            "batch_size": 1,
+            "input_image_shape": [
+                36,
+                212,
+                212
+            ],
+            "num_workers": 80,
+            "output_image_shape": [
+                4,
+                120,
+                120
+            ],
+            "parallel": false,
+            "pipeline": {
+                "_order": [
+                    "source",
+                    "normalize",
+                    "target",
+                    "post",
+                    "lsd_target"
+                ],
+                "_outputs": [
+                    "RAW",
+                    "LABELS",
+                    "GT_AFFS",
+                    "AFFS_WEIGHTS",
+                    "GT_AFFS_MASK",
+                    "LABELS_MASK",
+                    "GT_LSDS",
+                    "LSDS_WEIGHTS"
+                ],
+                "lsd_target": [
+                    {
+                        "add_local_shape_descriptor": {
+                            "descriptor": "GT_LSDS",
+                            "downsample": 4,
+                            "labels_mask": "LABELS_MASK",
+                            "lsds_mask": "LSDS_WEIGHTS",
+                            "segmentation": "LABELS",
+                            "sigma": 80
+                        }
+                    }
+                ],
+                "normalize": [
+                    {
+                        "normalize": {
+                            "array": "RAW"
+                        }
+                    }
+                ],
+                "post": [
+                    {
+                        "intensity_scale_shift": {
+                            "array": "RAW",
+                            "scale": 2,
+                            "shift": -1
+                        }
+                    },
+                    {
+                        "unsqueeze": {
+                            "arrays": [
+                                "RAW"
+                            ],
+                            "axis": 0
+                        }
+                    }
+                ],
+                "source": [
+                    [
+                        [
+                            {
+                                "zarr_source": {
+                                    "array_specs": {
+                                        "_labels": {
+                                            "array_spec": {
+                                                "interpolatable": false
+                                            }
+                                        },
+                                        "_labels_mask": {
+                                            "array_spec": {
+                                                "interpolatable": false
+                                            }
+                                        },
+                                        "_raw": {
+                                            "array_spec": {
+                                                "interpolatable": true
+                                            }
+                                        }
+                                    },
+                                    "datasets": {
+                                        "_labels": "labels/s1",
+                                        "_labels_mask": "labels_mask/s1",
+                                        "_raw": "raw/s1"
+                                    },
+                                    "store": "SynapseWeb/kh2015/oblique"
+                                }
+                            },
+                            {
+                                "pad": {
+                                    "key": "RAW",
+                                    "size": null
+                                }
+                            },
+                            {
+                                "pad": {
+                                    "key": "LABELS",
+                                    "size": {
+                                        "coordinate": {
+                                            "_positional": [
+                                                450,
+                                                290,
+                                                290
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "pad": {
+                                    "key": "LABELS_MASK",
+                                    "size": {
+                                        "coordinate": {
+                                            "_positional": [
+                                                450,
+                                                290,
+                                                290
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "random_location": {
+                                    "mask": "LABELS_MASK",
+                                    "min_masked": 0.7
+                                }
+                            }
+                        ]
+                    ],
+                    {
+                        "random_provider": {}
+                    }
+                ],
+                "target": [
+                    {
+                        "add_affinities": {
+                            "affinities": "GT_AFFS",
+                            "affinities_mask": "GT_AFFS_MASK",
+                            "affinity_neighborhood": [
+                                [
+                                    -1,
+                                    0,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    -1,
+                                    0
+                                ],
+                                [
+                                    0,
+                                    0,
+                                    -1
+                                ]
+                            ],
+                            "labels": "LABELS",
+                            "labels_mask": "LABELS_MASK"
+                        }
+                    },
+                    {
+                        "balance_labels": {
+                            "labels": "GT_AFFS",
+                            "mask": "GT_AFFS_MASK",
+                            "scales": "AFFS_WEIGHTS"
+                        }
+                    }
+                ]
+            },
+            "precache_per_worker": 4,
+            "use_gunpowder_precache": false
+        },
+        "val_log": 2500
+    }
+}

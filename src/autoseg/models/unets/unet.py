@@ -17,11 +17,12 @@ class ConvPass(torch.nn.Module):
         padding="valid",
     ):
         super(ConvPass, self).__init__()
+        self.normalization = "LayerNorm"
 
         if activation is not None:
             activation = getattr(torch.nn, activation)
 
-        layers = []
+        self.layers = nn.ModuleList()
 
         for kernel_size in kernel_sizes:
             self.dims = len(kernel_size)
@@ -34,23 +35,37 @@ class ConvPass(torch.nn.Module):
                 pad = 0
 
             try:
-                layers.append(conv(in_channels, out_channels, kernel_size, padding=pad))
+                self.layers.append(
+                    conv(in_channels, out_channels, kernel_size, padding=pad)
+                )
             except KeyError:
                 raise RuntimeError("%dD convolution not implemented" % self.dims)
 
             in_channels = out_channels
 
-            if activation is not None:
-                layers.append(activation())
-
             if normalization is not None:
-                norms = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
-                layers.append(norms[self.dims](out_channels))
+                if normalization == "BatchNorm":
+                    norms = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
+                    self.layers.append(norms[self.dims](out_channels))
+                elif normalization == "LayerNorm":
+                    self.layers.append(nn.LayerNorm(out_channels))
 
-        self.conv_pass = torch.nn.Sequential(*layers)
+            if activation is not None:
+                self.layers.append(activation())
+
+        # self.conv_pass = torch.nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.conv_pass(x)
+        for layer in self.layers:
+            if isinstance(layer, nn.LayerNorm):
+                # (B, C, Z, Y, X) -> (B, Z, Y, X, C)
+                x = x.permute(0, 2, 3, 4, 1)
+                x = layer(x)
+                x = x.permute(0, 4, 1, 2, 3)
+            else:
+                x = layer(x)
+        return x
+        # return self.conv_pass(x)
 
 
 class Downsample(torch.nn.Module):

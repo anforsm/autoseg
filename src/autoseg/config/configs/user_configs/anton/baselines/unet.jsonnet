@@ -2,16 +2,27 @@ local defaults = import "autoseg/defaults";
 local pad = import "autoseg/defaults/pad";
 local zarrsource = import "autoseg/defaults/zarrsource";
 
-defaults + {
+
+local modifications = {
 
   training+: {
     update_steps: 200000,
-    log_snapshot_every: 100,
+    log_snapshot_every: 1000,
     save_every: 25000,
     val_log: 2500,
     num_val_samples: 100,
     logging+: {
-      wandb: false,
+      wandb: true,
+    },
+    val_dataloader+: {
+      pipeline+: {
+        source: [
+          [
+            [zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
+          ],
+          {random_provider: {}}
+        ],
+      },
     }
   },
   pipeline+: {
@@ -34,7 +45,7 @@ defaults + {
     ],
   },
   model: {
-    name: "Baseline_UNet",
+    name: "UNet_baseline",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
@@ -62,4 +73,6 @@ defaults + {
       ],
     }
   },
-}
+};
+
+defaults + modifications
