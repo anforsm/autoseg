@@ -21,7 +21,7 @@ baseline
   } + lsd_target,
 
   model+: {
-    name: "UNet_LSD",
+    name: "UNet_LSD_2",
     hyperparameters+: {
       output_shapes+: [10]
     }

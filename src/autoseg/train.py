@@ -30,10 +30,6 @@ from autoseg.train_utils import get_2D_snapshot, save_zarr_snapshot
 from autoseg.utils import get_artifact_base_path
 import autoseg.optimizers as optim
 
-torch.manual_seed(1337)
-np.random.seed(1337)
-random.seed(1337)
-
 try:
     mp.set_start_method("spawn")
 except RuntimeError:
@@ -347,7 +343,7 @@ def main(rank, config):
     kwargs = config["optimizer"][optimizer]
     if hasattr(optim, optimizer):
         optimizer = getattr(optim, optimizer)
-    elif hasattr(torch.optim, optim):
+    elif hasattr(torch.optim, optimizer):
         optimizer = getattr(torch.optim, optimizer)
     optimizer = optimizer(model.parameters(), **kwargs)
 

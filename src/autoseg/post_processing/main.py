@@ -49,9 +49,11 @@ if __name__ == "__main__":
         p["processing"]["extract_fragments"]["mask_file"] = None
         p["processing"]["extract_fragments"]["mask_dataset"] = None
         if "mask" in config["predict"]:
-            p["processing"]["extract_fragments"]["mask_file"] = config["predict"][
-                "mask"
-            ][0]["path"]
+            p["processing"]["extract_fragments"]["mask_file"] = (
+                Path(get_dataset_path(config["predict"]["mask"][0]["path"]))
+                .absolute()
+                .as_posix()
+            )
             p["processing"]["extract_fragments"]["mask_dataset"] = config["predict"][
                 "mask"
             ][0]["dataset"]

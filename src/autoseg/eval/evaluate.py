@@ -755,6 +755,8 @@ if __name__ == "__main__":
         merge_function = "mean"
 
         step = frags_file.split("step-")[1].split("/")[0]
+        if step == "0":
+            continue
         results_out_dir = (
             Path(get_artifact_base_path(config))
             / Path(config["evaluation"]["results_dir"])
@@ -781,7 +783,7 @@ if __name__ == "__main__":
         roi_shape = roi.get_shape()
         compute_mincut_metric = True
 
-        gt_labels = config["evaluation"]["groud_truth_labels"][0]
+        gt_labels = config["evaluation"]["ground_truth_labels"][0]
 
         edges_table = None
         args = None

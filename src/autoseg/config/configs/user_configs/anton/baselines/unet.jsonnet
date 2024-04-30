@@ -37,6 +37,12 @@ local modifications = {
     predict_with_every_n_checkpoint: 1,
     shape_increase: [0, 405, 405],
     #shape_increase: [0, 0, 0],
+    mask: [
+      {
+        path: "SynapseWeb/kh2015/oblique",
+        dataset: "labels_mask/s1",
+      }
+    ],
     source: [
       {
         path: "SynapseWeb/kh2015/oblique",
@@ -45,7 +51,7 @@ local modifications = {
     ],
   },
   model: {
-    name: "UNet_baseline",
+    name: "UNet_baseline_2",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
@@ -73,6 +79,7 @@ local modifications = {
       ],
     }
   },
+
 };
 
 defaults + modifications
