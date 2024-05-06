@@ -316,8 +316,7 @@ if __name__ == "__main__":
 
             shape_increase = Coordinate(config["predict"]["shape_increase"])
             output_size = (
-                Coordinate(config["training"]["train_dataloader"]["output_image_shape"])
-                + shape_increase
+                Coordinate(config["model"]["output_image_shape"]) + shape_increase
             ) * Coordinate(resolution)
             shape = get_shape(input_zarr["path"], input_zarr["dataset"])
             print(output_size, shape, resolution)
@@ -367,8 +366,8 @@ if __name__ == "__main__":
             predict_zarr(
                 input_zarr,
                 output_zarrs,
-                config["training"]["train_dataloader"]["input_image_shape"],
-                config["training"]["train_dataloader"]["output_image_shape"],
+                config["model"]["input_image_shape"],
+                config["model"]["output_image_shape"],
                 model_outputs,
                 config["predict"]["num_workers"],
                 model_checkpoint_path,

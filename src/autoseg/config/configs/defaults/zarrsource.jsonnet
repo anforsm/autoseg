@@ -1,4 +1,4 @@
-{zarr_source(store="SynapseWeb/kh2015/oblique") ::
+{zarr_source(store="SynapseWeb/kh2015/oblique", scale="s0") ::
   local non_interpolatable_array_spec = {array_spec: {
     interpolatable: false
   }};
@@ -9,9 +9,9 @@
   {zarr_source: {
     store: store,
     datasets: {
-      _raw: "raw/s0",
-      _labels: "labels/s0",
-      _labels_mask: "labels_mask/s0",
+      _raw: "raw" + if scale != null then "/" + scale else "",
+      _labels: "labels" + if scale != null then "/" + scale else "",
+      _labels_mask: "labels_mask" + if scale != null then "/" + scale else "",
     },
     array_specs: {
       _raw: interpolatable_array_spec,

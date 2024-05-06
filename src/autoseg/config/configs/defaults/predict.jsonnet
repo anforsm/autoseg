@@ -7,6 +7,12 @@
     predict_with_every_n_checkpoint: 0,
     predict_with_best_checkpoint: false,
     predict_with_last_checkpoint: true,
+    mask: [
+      {
+        path: "SynapseWeb/kh2015/oblique",
+        dataset: "labels_mask/s0",
+      }
+    ],
     source: [
       {
         #path: "/home/anton/.cache/autoseg/datasets/SynapseWeb/kh2015/data/spine.zarr",
@@ -14,7 +20,6 @@
         dataset: "raw/s0",
       }
     ],
-
     output: [
       {
         path: "oblique_prediction.zarr",

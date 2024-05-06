@@ -28,10 +28,7 @@ from autoseg.transforms.gp_parser import snake_case_to_camel_case
 from autoseg.log import Logger
 from autoseg.train_utils import get_2D_snapshot, save_zarr_snapshot
 from autoseg.utils import get_artifact_base_path
-
-torch.manual_seed(1337)
-np.random.seed(1337)
-random.seed(1337)
+import autoseg.optimizers as optim
 
 try:
     mp.set_start_method("spawn")
@@ -123,13 +120,14 @@ def train(
     model,
     dataloader,
     crit,
+    optimizer,
     batch_outputs,
     model_inputs,
     model_outputs,
     loss_inputs,
     logger=None,
     val_dataloader=None,
-    learning_rate=1e-5,
+    # learning_rate=1e-5,
     update_steps=10000,
     log_snapshot_every=10,
     save_every=1000,
@@ -140,12 +138,12 @@ def train(
 ):
     master_process = not MULTI_GPU or DEVICE == "cuda:0"
     # crit = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = optimizer(model.parameters(), lr=learning_rate)
 
     avg_loss = 0
     lowest_val_loss = float("inf")
 
-    for step, batch in zip(range(update_steps), iter(dataloader)):
+    for step, batch in zip(range(update_steps + 1), iter(dataloader)):
         optimizer.zero_grad()
 
         prediction, loss = batch_predict(
@@ -182,7 +180,7 @@ def train(
             for name in logger.image_keys:
                 image_tensors[name] = source_dict[name]
 
-            images = get_2D_snapshot(image_tensors)
+            images = get_2D_snapshot(image_tensors, center_crop=False)
             logger.push({"images": list(images)})
 
             zarrs = save_zarr_snapshot(
@@ -339,11 +337,22 @@ def main(rank, config):
     model_inputs = config["model_inputs"]
     loss_inputs = config["loss"]["_inputs"]
 
+    optimizer = (
+        list(config["optimizer"].keys())[0] if "optimizer" in config else "AdamW"
+    )
+    kwargs = config["optimizer"][optimizer]
+    if hasattr(optim, optimizer):
+        optimizer = getattr(optim, optimizer)
+    elif hasattr(torch.optim, optimizer):
+        optimizer = getattr(torch.optim, optimizer)
+    optimizer = optimizer(model.parameters(), **kwargs)
+
     train(
         model=model,
         dataloader=dataloader,
         val_dataloader=val_dataloader,
         crit=crit,
+        optimizer=optimizer,
         batch_outputs=batch_outputs,
         model_outputs=model_outputs,
         model_inputs=model_inputs,
@@ -356,7 +365,6 @@ def main(rank, config):
         val_log=config["val_log"],
         overwrite_checkpoints=config["overwrite_checkpoints"],
         save_best=config["save_best"],
-        learning_rate=config["learning_rate"],
         update_steps=config["update_steps"],
         snapshot_dir=base_path + "snapshots",
     )

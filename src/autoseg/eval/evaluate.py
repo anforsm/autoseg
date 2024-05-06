@@ -48,18 +48,19 @@ class EvaluateAnnotations:
         roi_offset,
         roi_shape,
         compute_mincut_metric,
+        labels,
         thresholds_minmax=[0.2, 0.9],
         thresholds_step=0.20,
         **kwargs,
     ):
-        self.labels = open_ds(
-            get_dataset_path("SynapseWeb/kh2015/oblique").as_posix(), "labels/s0"
-        )
+        self.labels = labels
         self.fragments = open_ds(fragments_file, fragments_ds)
         self.rag_path = rag_path
         self.edges_table = edges_table
         self.lut_dir = lut_dir
-        self.skeletons_file = "./eval/skel.graphml"
+        self.skeletons_file = (
+            "/home/anton/github/autoseg/src/autoseg/eval/skel_filtered.graphml"
+        )
         if roi_offset is not None:
             self.roi = Roi(roi_offset, roi_shape).intersect(self.labels.roi)
         else:
@@ -462,6 +463,7 @@ class EvaluateAnnotations:
         rag_provider = PgSQLGraphDatabase(
             **db_config,
             **rag_config,
+            db_name=self.rag_path,
             mode="r",
         )
 
@@ -479,19 +481,22 @@ class EvaluateAnnotations:
         logger.info("RAG contains %d nodes/%d edges", len(nodes), len(edges))
 
         rag = nx.Graph()
+        print(rag)
         node_list = [(n["id"], {"segment_id": n["segment_id"]}) for n in nodes]
-        edge_list = [
-            (e["u"], e["v"], {"merge_score": e["merge_score"]})
-            for e in edges
-            if (1 if e["merge_score"] is None else e["merge_score"]) <= threshold
-        ]
+        # edge_list = [
+        #     (e["u"], e["v"], {"merge_score": e["merge_score"]})
+        #     for e in edges
+        #     if (1 if e["merge_score"] is None else e["merge_score"]) <= threshold
+        # ]
 
         edge_list = []
         for e in edges:
             if e["merge_score"] is None:
-                edge_list.append((e["u"], e["v"], {"merge_score": 1.0}))
+                edge_list.append((int(e["u"]), int(e["v"]), {"merge_score": 1.0}))
             elif e["merge_score"] <= threshold:
-                edge_list.append((e["u"], e["v"], {"merge_score": e["merge_score"]}))
+                edge_list.append(
+                    (int(e["u"]), int(e["v"]), {"merge_score": e["merge_score"]})
+                )
 
         rag.add_nodes_from(node_list)
         rag.add_edges_from(edge_list)
@@ -727,54 +732,79 @@ if __name__ == "__main__":
     config = sys.argv[1]
     config = read_config(config)
 
-    frags_file = Path(get_artifact_base_path(config)) / Path(
-        "predictions/step-50000/oblique_prediction.zarr"
+    # frags_file = Path(get_artifact_base_path(config)) / Path(
+    #    "predictions/step-50000/oblique_prediction.zarr"
+    # )
+    frags_files = glob.glob(
+        f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr"
     )
-    frags_file = frags_file.absolute().as_posix()
-    # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
-    # frags_file = "test.zarr"
-    # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
-    # merge_function = "mean"
+    for frags_file in frags_files:
+        # database name
+        rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}".lower()
+        frags_file = Path(frags_file).absolute().as_posix()
+        # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
+        # frags_file = "test.zarr"
+        # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
+        # merge_function = "mean"
 
-    # frags_file = sys.argv[1]
-    # frag_str = sys.argv[2]
-    # merge_function = sys.argv[3]
-    # frags_file = "../oblique.zarr"
-    frag_str = "frags"
-    merge_function = "mean"
+        # frags_file = sys.argv[1]
+        # frag_str = sys.argv[2]
+        # merge_function = sys.argv[3]
+        # frags_file = "../oblique.zarr"
+        frag_str = "frags"
+        merge_function = "mean"
 
-    results_out_dir = f"./results"
+        step = frags_file.split("step-")[1].split("/")[0]
+        if step == "0":
+            continue
+        results_out_dir = (
+            Path(get_artifact_base_path(config))
+            / Path(config["evaluation"]["results_dir"])
+            / Path(f"step-{step}")
+        )
+        results_out_dir = results_out_dir.absolute().as_posix() + "/"
+        # results_out_dir = f"./results"
 
-    # frags_ds = os.path.join("repost",frag_str,"fragments")
-    frags_ds = "frags"
-    # edges_table = "edges_"+merge_function
-    # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
-    lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
-    print(frags_file, frags_ds)
+        # frags_ds = os.path.join("repost",frag_str,"fragments")
+        frags_ds = "frags"
+        # edges_table = "edges_"+merge_function
+        # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
+        lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
+        print(frags_file, frags_ds)
+        print(results_out_dir)
 
-    fragments = open_ds(frags_file, frags_ds)
-    roi = fragments.roi
-    roi_offset = roi.get_offset()
-    roi_shape = roi.get_shape()
-    compute_mincut_metric = True
+        fragments = open_ds(frags_file, frags_ds)
+        roi = fragments.roi
+        roi_offset = roi.get_offset()
+        # print(roi_offset)
+        # print(fragments.voxel_size)
+        # exit()
+        # roi_offset = roi_offset.snap_to_grid(fragments.voxel_size,mode="shrink")
+        roi_shape = roi.get_shape()
+        compute_mincut_metric = True
 
-    rag_path = "./eval/skel.graphml"
-    edges_table = None
-    args = None
-    evaluate = EvaluateAnnotations(
-        frags_file,
-        frags_ds,
-        rag_path,
-        edges_table,
-        lut_dir,
-        roi_offset,
-        roi_shape,
-        compute_mincut_metric,
-    )
+        gt_labels = config["evaluation"]["ground_truth_labels"][0]
 
-    ret = evaluate.evaluate()
-    args = parse_str(frag_str)
+        edges_table = None
+        args = None
+        evaluate = EvaluateAnnotations(
+            frags_file,
+            frags_ds,
+            rag_path,
+            edges_table,
+            lut_dir,
+            roi_offset,
+            roi_shape,
+            compute_mincut_metric,
+            labels=open_ds(
+                get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
+            ),
+        )
 
-    os.makedirs(results_out_dir, exist_ok=True)
-    with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
-        json.dump(args | ret, f, indent=4)
+        ret = evaluate.evaluate()
+        args = parse_str(frag_str)
+
+        os.makedirs(results_out_dir, exist_ok=True)
+        print(results_out_dir)
+        with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
+            json.dump(args | ret, f, indent=4)

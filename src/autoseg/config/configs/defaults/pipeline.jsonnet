@@ -34,9 +34,11 @@
         transpose_only: [1, 2]
       }},
       {defect_augment: {
+        intensities: "RAW",
         prob_missing: 0.03,
       }},
       {shift_augment: {
+        sigma: 2,
         prob_slip: 0.03,
         prob_shift: 0.03
       }},

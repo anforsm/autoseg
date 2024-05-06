@@ -3,6 +3,9 @@ import math
 import torch
 import torch.nn as nn
 
+DEBUG = False
+# DEBUG = True
+
 
 class ConvPass(torch.nn.Module):
     def __init__(
@@ -15,11 +18,12 @@ class ConvPass(torch.nn.Module):
         padding="valid",
     ):
         super(ConvPass, self).__init__()
+        self.normalization = "LayerNorm"
 
         if activation is not None:
             activation = getattr(torch.nn, activation)
 
-        layers = []
+        self.layers = nn.ModuleList()
 
         for kernel_size in kernel_sizes:
             self.dims = len(kernel_size)
@@ -32,23 +36,93 @@ class ConvPass(torch.nn.Module):
                 pad = 0
 
             try:
-                layers.append(conv(in_channels, out_channels, kernel_size, padding=pad))
+                self.layers.append(
+                    conv(in_channels, out_channels, kernel_size, padding=pad)
+                )
             except KeyError:
                 raise RuntimeError("%dD convolution not implemented" % self.dims)
 
             in_channels = out_channels
 
-            if activation is not None:
-                layers.append(activation())
-
             if normalization is not None:
-                norms = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
-                layers.append(norms[self.dims](out_channels))
+                if normalization == "BatchNorm":
+                    norms = {2: nn.BatchNorm2d, 3: nn.BatchNorm3d}
+                    self.layers.append(norms[self.dims](out_channels))
+                elif normalization == "LayerNorm":
+                    self.layers.append(nn.LayerNorm(out_channels))
 
-        self.conv_pass = torch.nn.Sequential(*layers)
+            if activation is not None:
+                self.layers.append(activation())
+
+        # self.conv_pass = torch.nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.conv_pass(x)
+        for layer in self.layers:
+            if isinstance(layer, nn.LayerNorm):
+                # (B, C, Z, Y, X) -> (B, Z, Y, X, C)
+                x = x.permute(0, 2, 3, 4, 1)
+                x = layer(x)
+                x = x.permute(0, 4, 1, 2, 3)
+            else:
+                x = layer(x)
+        return x
+        # return self.conv_pass(x)
+
+
+class ConvNeXtPass(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_sizes):
+        super(ConvNeXtPass, self).__init__()
+        self.dims = 3
+        passes = []
+        for i, kernel_size in enumerate(kernel_sizes):
+            passes.append(
+                ConvNeXtPassInner(in_channels if i == 0 else out_channels, out_channels)
+            )
+        self.passes = nn.ModuleList(passes)
+
+    def forward(self, x):
+        for pass_ in self.passes:
+            x = pass_(x)
+        return x
+
+
+class ConvNeXtPassInner(torch.nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+    ):
+        super(ConvNeXtPassInner, self).__init__()
+        bottleneck_size = 2 * out_channels
+        self.dims = 3
+        pad = 0
+        # depthwise conv
+        self.conv1 = nn.Conv3d(
+            in_channels, in_channels, kernel_size=(3, 3, 3), padding=pad
+        )  # , groups=in_channels)
+        self.norm = nn.LayerNorm(in_channels)
+        # self.conv2 = nn.Conv3d(in_channels, bottleneck_size, kernel_size=(1, 1, 1), padding=pad)
+        self.conv2 = nn.Linear(in_channels, bottleneck_size)
+        self.act = nn.GELU()
+        # self.conv3 = nn.Conv3d(bottleneck_size, out_channels, kernel_size=(1, 1, 1), padding=pad)
+        self.conv3 = nn.Linear(bottleneck_size, out_channels)
+
+    def forward(self, x):
+        # res = x
+        x = self.conv1(x)
+        # x = self.norm(x)
+        x = self.act(x)
+
+        x = x.permute(0, 2, 3, 4, 1)
+        x = self.conv2(x)
+        x = self.act(x)
+
+        x = self.conv3(x)
+        x = self.act(x)
+        x = x.permute(0, 4, 1, 2, 3)
+
+        # x += res
+        return x
 
 
 class Downsample(torch.nn.Module):
@@ -90,6 +164,8 @@ class Upsample(torch.nn.Module):
         padding="valid",
     ):
         super(Upsample, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
 
         assert (crop_factor is None) == (
             next_conv_kernel_sizes is None
@@ -121,13 +197,20 @@ class Upsample(torch.nn.Module):
         to do that before (feature maps will be smaller).
         """
 
+        if DEBUG:
+            print(f"factor {factor}")
+            print(f"kernel_sizes {kernel_sizes}")
         shape = x.size()
         spatial_shape = shape[-self.dims :]
+        if DEBUG:
+            print(f"spatial_shape {spatial_shape}")
 
         # the crop that will already be done due to the convolutions
         convolution_crop = tuple(
             sum(ks[d] - 1 for ks in kernel_sizes) for d in range(self.dims)
         )
+        if DEBUG:
+            print(f"convolution_crop {convolution_crop}")
 
         # we need (spatial_shape - convolution_crop) to be a multiple of
         # factor, i.e.:
@@ -149,6 +232,9 @@ class Upsample(torch.nn.Module):
         target_spatial_shape = tuple(
             n * f + c for n, c, f in zip(ns, convolution_crop, factor)
         )
+        target_spatial_shape = spatial_shape
+        if DEBUG:
+            print(f"target_spatial_shape {target_spatial_shape}")
 
         if target_spatial_shape != spatial_shape:
             assert all(
@@ -175,7 +261,17 @@ class Upsample(torch.nn.Module):
         return x[slices]
 
     def forward(self, f_left, g_out):
+        if DEBUG:
+            print(f"in_channels {self.in_channels}")
+            print(f"out_channels {self.out_channels}")
+            print(f"crop_factor {self.crop_factor}")
+            print(f"upsample g_out {g_out.shape}")
+
         g_up = self.up(g_out)
+
+        if DEBUG:
+            print(f"upsample g_up {g_up.shape}")
+            print(f"upsample f_left {f_left.shape}")
 
         if self.next_conv_kernel_sizes is not None and self.padding == "valid":
             g_cropped = self.crop_to_factor(
@@ -185,6 +281,9 @@ class Upsample(torch.nn.Module):
             g_cropped = g_up
 
         f_cropped = self.crop(f_left, g_cropped.size()[-self.dims :])
+        if DEBUG:
+            print(f"upsample g_cropped {g_cropped.shape}")
+            print(f"upsample f_cropped {f_cropped.shape}")
 
         return torch.cat([f_cropped, g_cropped], dim=1)
 
@@ -204,6 +303,7 @@ class UNet(torch.nn.Module):
         num_fmaps_out=None,
         num_heads=1,
         constant_upsample=False,
+        convnext_style=False,
         padding="valid",
         normalization=None,
     ):
@@ -326,27 +426,45 @@ class UNet(torch.nn.Module):
                 factor_product = list(f * ff for f, ff in zip(factor, factor_product))
             crop_factors.append(factor_product)
         crop_factors = crop_factors[::-1]
+        print(crop_factors)
 
         # modules
 
         # left convolutional passes
-        self.l_conv = nn.ModuleList(
-            [
-                ConvPass(
-                    (
-                        in_channels
-                        if level == 0
-                        else num_fmaps * fmap_inc_factor ** (level - 1)
-                    ),
-                    num_fmaps * fmap_inc_factor**level,
-                    kernel_size_down[level],
-                    activation=activation,
-                    padding=padding,
-                    normalization=normalization,
-                )
-                for level in range(self.num_levels)
-            ]
-        )
+        if not convnext_style:
+            self.l_conv = nn.ModuleList(
+                [
+                    ConvPass(
+                        (
+                            in_channels
+                            if level == 0
+                            else num_fmaps * fmap_inc_factor ** (level - 1)
+                        ),
+                        num_fmaps * fmap_inc_factor**level,
+                        kernel_size_down[level],
+                        activation=activation,
+                        padding=padding,
+                        normalization=normalization,
+                    )
+                    for level in range(self.num_levels)
+                ]
+            )
+        else:
+            self.l_conv = nn.ModuleList(
+                [
+                    ConvNeXtPass(
+                        (
+                            in_channels
+                            if level == 0
+                            else num_fmaps * fmap_inc_factor ** (level - 1)
+                        ),
+                        num_fmaps * fmap_inc_factor**level,
+                        kernel_size_down[level],
+                    )
+                    for level in range(self.num_levels)
+                ]
+            )
+
         self.dims = self.l_conv[0].dims
 
         # left downsample layers
@@ -375,7 +493,7 @@ class UNet(torch.nn.Module):
                                 # "trilinear" if constant_upsample else "transposed_conv"
                             ),
                             in_channels=num_fmaps * fmap_inc_factor ** (level + 1),
-                            out_channels=num_fmaps * fmap_inc_factor ** (level + 1),
+                            out_channels=num_fmaps * fmap_inc_factor ** (level),
                             crop_factor=crop_factors[level],
                             next_conv_kernel_sizes=kernel_size_up[level],
                             padding=padding,
@@ -388,29 +506,51 @@ class UNet(torch.nn.Module):
         )
 
         # right convolutional passes
-        self.r_conv = nn.ModuleList(
-            [
-                nn.ModuleList(
-                    [
-                        ConvPass(
-                            num_fmaps * fmap_inc_factor**level
-                            + num_fmaps * fmap_inc_factor ** (level + 1),
-                            (
-                                num_fmaps * fmap_inc_factor**level
-                                if num_fmaps_out is None or level != 0
-                                else num_fmaps_out
-                            ),
-                            kernel_size_up[level],
-                            activation=activation,
-                            padding=padding,
-                            normalization=normalization,
-                        )
-                        for level in range(self.num_levels - 1)
-                    ]
-                )
-                for _ in range(num_heads)
-            ]
-        )
+        if not convnext_style:
+            self.r_conv = nn.ModuleList(
+                [
+                    nn.ModuleList(
+                        [
+                            ConvPass(
+                                2 * num_fmaps * fmap_inc_factor**level,
+                                # + num_fmaps * fmap_inc_factor ** (level + 1),
+                                (
+                                    num_fmaps * fmap_inc_factor**level
+                                    if num_fmaps_out is None or level != 0
+                                    else num_fmaps_out
+                                ),
+                                kernel_size_up[level],
+                                activation=activation,
+                                padding=padding,
+                                normalization=normalization,
+                            )
+                            for level in range(self.num_levels - 1)
+                        ]
+                    )
+                    for _ in range(num_heads)
+                ]
+            )
+        else:
+            self.r_conv = nn.ModuleList(
+                [
+                    nn.ModuleList(
+                        [
+                            ConvNeXtPass(
+                                2 * num_fmaps * fmap_inc_factor**level,
+                                # + num_fmaps * fmap_inc_factor ** (level + 1),
+                                (
+                                    num_fmaps * fmap_inc_factor**level
+                                    if num_fmaps_out is None or level != 0
+                                    else num_fmaps_out
+                                ),
+                                kernel_size_up[level],
+                            )
+                            for level in range(self.num_levels - 1)
+                        ]
+                    )
+                    for _ in range(num_heads)
+                ]
+            )
 
     def rec_forward(self, level, f_in):
         # index of level in layer arrays
@@ -419,16 +559,31 @@ class UNet(torch.nn.Module):
         # convolve
         f_left = self.l_conv[i](f_in)
 
+        if DEBUG:
+            print("<=========DOWN===========>")
+            print(f"LEVEL {level}".center(25))
+            print(f"f_in {f_in.shape}".ljust(level * 2))
+            print(f"f_left {f_left.shape}".ljust(level * 2))
+
         # end of recursion
         if level == 0:
             fs_out = [f_left] * self.num_heads
+            if DEBUG:
+                print("end".ljust(level * 2))
+                print(f"fs_out {fs_out[0].shape}".ljust(level * 2))
 
         else:
             # down
             g_in = self.l_down[i](f_left)
+            if DEBUG:
+                print(f"g_in {g_in.shape}".ljust(level * 2))
 
             # nested levels
             gs_out = self.rec_forward(level - 1, g_in)
+            if DEBUG:
+                print("<============UP==========>")
+                print(f"LEVEL {level}".center(25))
+                print(f"gs_out {gs_out[0].shape}".ljust(level * 2))
 
             # up, concat, and crop
             fs_right = [
@@ -438,6 +593,10 @@ class UNet(torch.nn.Module):
             # convolve
             fs_out = [self.r_conv[h][i](fs_right[h]) for h in range(self.num_heads)]
 
+            if DEBUG:
+                print(f"fs_right {fs_right[0].shape}".ljust(level * 2))
+                print(f"fs_out {fs_out[0].shape}".ljust(level * 2))
+
         return fs_out
 
     def forward(self, x):
@@ -445,5 +604,6 @@ class UNet(torch.nn.Module):
 
         if self.num_heads == 1:
             return y[0]
+        exit()
 
         return y
