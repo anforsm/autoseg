@@ -51,7 +51,7 @@ local modifications = {
     ],
   },
   model: {
-    name: "UNet_baseline_2",
+    name: "UNet_baseline",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
