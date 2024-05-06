@@ -168,6 +168,7 @@ out*/
 checkpoints/
 config.yaml
 *.graphml
+*.parquet
 artifacts/
 temp_config.yaml
 
