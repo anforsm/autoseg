@@ -36,7 +36,7 @@ if __name__ == "__main__":
         p = postproc_yaml_config
         p["db"][
             "db_name"
-        ] = f"anton_{config['model']['name']}_{pred_file.split('step-')[1].split('/')[0]}".lower()
+        ] = f"anton_v2_{config['model']['name']}_{pred_file.split('step-')[1].split('/')[0]}".lower()
         print(p["db"]["db_name"])
         # print(p["processing"]["extract_fra"])
 

@@ -161,9 +161,9 @@ def extract_fragments(config: dict) -> bool:
         roi_shape = None
 
     if roi_offset is not None:
-        total_roi = Roi(roi_offset, roi_shape).grow(context, context)
+        total_roi = Roi(roi_offset, roi_shape)
     else:
-        total_roi = affs.roi.grow(context, context)
+        total_roi = affs.roi
 
     read_roi = Roi((0,) * affs.roi.dims, block_size).grow(context, context)
     write_roi = Roi((0,) * affs.roi.dims, block_size)
@@ -238,7 +238,7 @@ def extract_fragments(config: dict) -> bool:
     # blockwise watershed
     task = daisy.Task(
         task_id="ExtractFragmentsTask",
-        total_roi=total_roi,
+        total_roi=total_roi.grow(context, context),
         read_roi=read_roi,
         write_roi=write_roi,
         process_function=lambda: start_worker(config),
