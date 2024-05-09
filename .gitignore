@@ -169,7 +169,7 @@ checkpoints/
 config.yaml
 *.graphml
 *.parquet
-artifacts/
+artifacts*
 temp_config.yaml
 
 config.py

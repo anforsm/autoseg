@@ -735,9 +735,10 @@ if __name__ == "__main__":
     # frags_file = Path(get_artifact_base_path(config)) / Path(
     #    "predictions/step-50000/oblique_prediction.zarr"
     # )
-    frags_files = glob.glob(
-        f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr"
-    )
+    frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr"
+    print(frag_path)
+    frags_files = glob.glob(frag_path)
+    print("Starting evaluation", len(frags_files))
     for frags_file in frags_files:
         # database name
         rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}".lower()
