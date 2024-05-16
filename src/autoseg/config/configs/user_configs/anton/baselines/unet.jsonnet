@@ -29,6 +29,8 @@ local modifications = {
     source: [
       [
         [zarrsource.zarr_source("SynapseWeb/kh2015/apical", "s1")] + pad,
+        [zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
+        [zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
       ],
       {random_provider: {}}
     ],
@@ -51,7 +53,7 @@ local modifications = {
     ],
   },
   model: {
-    name: "UNet_baseline",
+    name: "UNet_baseline_BS8",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,

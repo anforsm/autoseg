@@ -319,15 +319,18 @@ def main(rank, config):
         dataset=dataset, config=config["training"]["train_dataloader"]
     )
 
-    validation_dataset = GunpowderZarrDataset(
-        config=config["training"]["val_dataloader"]["pipeline"],
-        input_image_shape=config["model"]["input_image_shape"],
-        output_image_shape=config["model"]["output_image_shape"],
-    )
+    if "val_dataloader" in config["training"] and config["training"]["val_dataloader"]:
+        validation_dataset = GunpowderZarrDataset(
+            config=config["training"]["val_dataloader"]["pipeline"],
+            input_image_shape=config["model"]["input_image_shape"],
+            output_image_shape=config["model"]["output_image_shape"],
+        )
 
-    val_dataloader = dataloader_from_config(
-        dataset=validation_dataset, config=config["training"]["val_dataloader"]
-    )
+        val_dataloader = dataloader_from_config(
+            dataset=validation_dataset, config=config["training"]["val_dataloader"]
+        )
+    else:
+        val_dataloader = None
 
     root_config = config
     base_path = get_artifact_base_path(config)
