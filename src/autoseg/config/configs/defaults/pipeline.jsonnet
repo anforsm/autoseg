@@ -54,6 +54,7 @@
       }},
       {grow_boundary: {
         labels: "LABELS",
+        mask: "LABELS_MASK",
         only_xy: true,
       }}
     ],
