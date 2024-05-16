@@ -53,7 +53,7 @@ local modifications = {
     ],
   },
   model: {
-    name: "UNet_baseline_BS8",
+    name: "UNet_OSA",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
