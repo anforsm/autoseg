@@ -8,7 +8,7 @@ local lsd_target = {lsd_target: [
     labels_mask: "LABELS_MASK",
     lsds_mask: "LSDS_WEIGHTS",
     sigma: 80,
-    downsample: 4,
+    downsample: 1,
   }},
 ]};
 
