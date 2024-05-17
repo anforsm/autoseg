@@ -37,7 +37,9 @@ baseline
       log_images+: ["gt_lsds", "lsds"],
       wandb: true
     },
-
+    train_dataloader+: {
+      num_workers: 40,
+    },
     val_dataloader+: {
       pipeline+: {
         _order+: ["lsd_target"],
