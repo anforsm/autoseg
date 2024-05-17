@@ -191,11 +191,16 @@ def train(
             logger.push({"zarrs": zarrs})
 
         # Save model
-        if step % save_every == 0 and master_process:
+        if step % save_every == 0 and master_process and not step == 0:
             save_model(model, step=step, overwrite_checkpoints=overwrite_checkpoints)
 
         # Log validation and snapshots
-        if step % val_log == 0 and val_dataloader is not None and master_process:
+        if (
+            step % val_log == 0
+            and val_dataloader is not None
+            and master_process
+            and not step == 0
+        ):
             with torch.no_grad():
                 model.eval()
                 avg_loss = 0

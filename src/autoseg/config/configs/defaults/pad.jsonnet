@@ -2,17 +2,18 @@
   {pad: {
     key: "RAW",
     size: null,
+    mode: "reflect",
   }},
   {pad: {
     key: "LABELS",
     size: {coordinate: {
-      _positional: [450, 290, 290]
+      _positional: [300, 280, 280]
     }},
   }},
   {pad: {
     key: "LABELS_MASK",
     size: {coordinate: {
-      _positional: [450, 290, 290]
+      _positional: [300, 280, 280]
     }},
   }},
   {random_location: {

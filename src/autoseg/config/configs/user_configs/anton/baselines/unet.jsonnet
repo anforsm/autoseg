@@ -9,7 +9,7 @@ local modifications = {
     update_steps: 200000,
     log_snapshot_every: 1000,
     save_every: 25000,
-    val_log: 2500,
+    val_log: 250000,
     num_val_samples: 100,
     logging+: {
       wandb: true,
@@ -58,8 +58,8 @@ local modifications = {
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
     class: "UNet",
-    input_image_shape: [84, 268, 268],
-    output_image_shape: [56, 56, 56],
+    input_image_shape: [54, 268, 268],
+    output_image_shape: [26, 56, 56],
     hyperparameters: {
       in_channels: 1,
       output_shapes: [3],
