@@ -33,12 +33,12 @@ defaults + {
       num_heads: 12,
     }
   },
-  #training+: {
-  #  logging+: {
-  #    wandb: false
-  #  },
-  #  train_dataloader+: {
-  #    num_workers: 10,
-  #  }
-  #}
+  training+: {
+    #logging+: {
+    #  wandb: false
+    #},
+    train_dataloader+: {
+      num_workers: 40,
+    }
+  }
 }
