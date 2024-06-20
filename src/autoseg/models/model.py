@@ -107,9 +107,11 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def load(self, **kwargs):
         local_path = self.get_local_path(**kwargs)
+        print(local_path)
         if Path(local_path).exists():
             self.load_from_local(local_path, **kwargs)
         else:
+            print("Could not find local weights")
             try:
                 self.load_from_hf()
             except:
