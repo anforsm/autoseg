@@ -309,7 +309,7 @@ if __name__ == "__main__":
             resolution = get_voxel_size(input_zarr["path"], input_zarr["dataset"])
 
         output_zarrs = []
-        for output_config in config["predict"]["output"]:
+        for i, output_config in enumerate(config["predict"]["output"]):
             out_ds = output_config["dataset"] + (
                 f"/{i}" if num_source_configs > 1 else ""
             )
@@ -327,13 +327,27 @@ if __name__ == "__main__":
                 / Path(model_checkpoint_path)
                 / Path(output_config["path"])
             )
+            if "mask" in config["predict"]:
+                labels_mask = zarr.open(
+                    get_dataset_path(config["predict"]["mask"][i]["path"]), mode="r"
+                )
+                labels_mask = labels_mask[config["predict"]["mask"][i]["dataset"]]
+                roi = gp.Roi(
+                    labels_mask.attrs["offset"],
+                    Coordinate(labels_mask.shape) * Coordinate(resolution),
+                )
+            else:
+                raw = zarr.open(input_zarr["path"], mode="r")
+                raw = raw[input_zarr["dataset"]]
+                roi = gp.Roi(
+                    raw.attrs["offset"],
+                    Coordinate(shape) * Coordinate(resolution),
+                )
             out_path = out_path.resolve().as_posix()
             prepare_ds(
                 filename=out_path,
                 ds_name=out_ds,
-                total_roi=gp.Roi(
-                    (0,) * len(shape), Coordinate(shape) * Coordinate(resolution)
-                ),
+                total_roi=roi,
                 write_size=output_size,
                 delete=True,
                 voxel_size=Coordinate(resolution),

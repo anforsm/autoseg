@@ -6,13 +6,13 @@ from autoseg.datasets import get_dataset_path, download_dataset
 
 if __name__ == "__main__":
     in_f = sys.argv[1]
-    download_dataset(in_f)
-    exit()
-    in_f = get_dataset_path(in_f).as_posix().replace(".zip", "")
-    in_ds = "labels/s0"
+
+    in_f = get_dataset_path(in_f).as_posix()  # .replace(".zip", "")
+    in_ds = sys.argv[2]
+    # in_ds = "labels/s0"
     # in_ds = "labels_filtered"
 
-    out_ds = "labels_filtered_relabeled"
+    out_ds = "relabelled_" + in_ds
 
     labels = open_ds(in_f, in_ds)
 

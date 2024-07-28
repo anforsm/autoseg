@@ -107,12 +107,15 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
 
     def load(self, **kwargs):
         local_path = self.get_local_path(**kwargs)
+        print(local_path)
         if Path(local_path).exists():
+            print("Loading from local checkpoint")
             self.load_from_local(local_path, **kwargs)
         else:
             try:
                 self.load_from_hf()
-            except:
+            except Exception as e:
+                print(e)
                 pass
 
     def load_from_hf(self):

@@ -38,18 +38,77 @@ local modifications = {
   predict+: {
     predict_with_every_n_checkpoint: 1,
     shape_increase: [0, 405, 405],
-    #shape_increase: [0, 0, 0],
+    #shape_increase: [-12, 0, 0],
     mask: [
       {
         path: "SynapseWeb/kh2015/oblique",
         dataset: "labels_mask/s1",
-      }
+      },
+      {
+        path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
+        dataset: "volumes/object_mask/s1",
+      },
+      #null,
     ],
     source: [
       {
         path: "SynapseWeb/kh2015/oblique",
         dataset: "raw/s1",
-      }
+      },
+      {
+        path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
+        dataset: "volumes/image/s1",
+      },
+      #{
+      #  path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
+      #  dataset: "volumes/image/s1",
+      #}
+    ],
+    output: [
+      {
+        path: "oblique_prediction.zarr",
+        dataset: "preds/affs",
+        num_channels: 3,
+        #stacked: true,
+      },
+      {
+        path: "BBCHZ_prediction_MASKED_pred.zarr",
+        dataset: "preds/affs",
+        num_channels: 3,
+      },
+      #{
+      #  path: "BBCHZ_prediction.zarr",
+      #  dataset: "preds/affs",
+      #  num_channels: 3,
+      #}
+    ],
+  },
+  evaluation+: {
+    method: "hagglom",
+    results_dir: "results",
+    ground_truth_skeletons: [
+      "eval/skel_filtered.graphml",
+      "eval/BBCHZ.graphml",
+      #"eval/BBCHZ.graphml",
+    ],
+    ground_truth_labels: [
+      {
+        path: "SynapseWeb/kh2015/oblique",
+        dataset: "labels/s1"
+      },
+      {
+        path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
+        dataset: "relabelled_eroded/volumes/neuron_ids/s1",
+      },
+      #{
+      #  path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
+      #  dataset: "relabelled_eroded/volumes/neuron_ids/s1",
+      #}
+    ],
+    output: [
+      "Oblique_results.json",
+      "BBCHZ_results_MASKED_pred.json",
+      #"BBCHZ_results.json",
     ],
   },
   model: {

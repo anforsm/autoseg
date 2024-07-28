@@ -44,8 +44,8 @@
     predict+: {
       output: [
         {
-          path: "oblique.zarr",
-          dataset: "affs",
+          path: "oblique_prediction.zarr",
+          dataset: "preds/affs",
           num_channels: 3,
         }
       ]

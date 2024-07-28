@@ -76,6 +76,9 @@ def predict_blockwise(
     chunk_request = gp.BatchRequest()
     raw = gp.ArrayKey("RAW")
     chunk_request.add(raw, input_image_size)
+    print("sizes")
+    print(input_image_size)
+    print(output_image_size)
     for ak in array_keys:
         chunk_request.add(ak, output_image_size)
 

@@ -40,5 +40,9 @@ defaults + {
     train_dataloader+: {
       num_workers: 40,
     }
+  },
+  predict+: {
+    predict_with_every_n_checkpoint: 1,
+    shape_increase: [0, 0, 0],
   }
 }

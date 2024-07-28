@@ -1,4 +1,15 @@
 {
+    "evaluation": {
+        "ground_truth_labels": [
+            {
+                "dataset": "labels/s1",
+                "path": "SynapseWeb/kh2015/oblique"
+            }
+        ],
+        "ground_truth_skeletons": "eval/refined_skels.graphml",
+        "method": "hagglom",
+        "results_dir": "results"
+    },
     "model": {
         "class": "UNet",
         "hf_path": null,
@@ -114,7 +125,17 @@
                 3
             ]
         },
+        "input_image_shape": [
+            36,
+            212,
+            212
+        ],
         "name": "UNet_extra_latest_2",
+        "output_image_shape": [
+            4,
+            120,
+            120
+        ],
         "path": "checkpoints/"
     },
     "pipeline": {
@@ -137,14 +158,14 @@
             {
                 "elastic_augment": {
                     "control_point_spacing": [
-                        1,
+                        2,
                         50,
                         50
                     ],
                     "jitter_sigma": [
                         0,
-                        5,
-                        5
+                        2,
+                        2
                     ],
                     "rotation_interval": [
                         0,
@@ -166,8 +187,16 @@
                 }
             },
             {
-                "noise_augment": {
-                    "array": "RAW"
+                "defect_augment": {
+                    "intensities": "RAW",
+                    "prob_missing": 0.03
+                }
+            },
+            {
+                "shift_augment": {
+                    "prob_shift": 0.03,
+                    "prob_slip": 0.03,
+                    "sigma": 2
                 }
             },
             {
@@ -187,6 +216,7 @@
             {
                 "grow_boundary": {
                     "labels": "LABELS",
+                    "mask": "LABELS_MASK",
                     "only_xy": true
                 }
             }
@@ -248,6 +278,7 @@
                     {
                         "pad": {
                             "key": "RAW",
+                            "mode": "reflect",
                             "size": null
                         }
                     },
@@ -257,9 +288,9 @@
                             "size": {
                                 "coordinate": {
                                     "_positional": [
-                                        450,
-                                        290,
-                                        290
+                                        300,
+                                        280,
+                                        280
                                     ]
                                 }
                             }
@@ -271,9 +302,9 @@
                             "size": {
                                 "coordinate": {
                                     "_positional": [
-                                        450,
-                                        290,
-                                        290
+                                        300,
+                                        280,
+                                        280
                                     ]
                                 }
                             }
@@ -327,22 +358,28 @@
         ]
     },
     "predict": {
+        "mask": [
+            {
+                "dataset": "labels_mask/s0",
+                "path": "SynapseWeb/kh2015/oblique"
+            }
+        ],
         "multi_gpu": false,
         "num_workers": 6,
         "output": [
             {
                 "dataset": "preds/affs",
                 "num_channels": 3,
-                "path": "./oblique_prediction.zarr"
+                "path": "oblique_prediction.zarr"
             }
         ],
         "predict_with_best_checkpoint": false,
-        "predict_with_every_n_checkpoint": 2,
-        "predict_with_last_checkpoint": false,
+        "predict_with_every_n_checkpoint": 0,
+        "predict_with_last_checkpoint": true,
         "shape_increase": [
             0,
-            800,
-            800
+            400,
+            400
         ],
         "source": [
             {
@@ -361,7 +398,6 @@
             "affs_mask",
             "labels_mask"
         ],
-        "learning_rate": 5e-05,
         "log_snapshot_every": 100,
         "logging": {
             "log_images": [
@@ -388,9 +424,14 @@
         ],
         "multi_gpu": false,
         "num_val_samples": 10,
+        "optimizer": {
+            "AdamW": {
+                "lr": 5e-05
+            }
+        },
         "overwrite_checkpoints": false,
         "save_best": true,
-        "save_every": 300,
+        "save_every": 25000,
         "train_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
@@ -398,17 +439,17 @@
                 212,
                 212
             ],
-            "num_workers": 20,
+            "num_workers": 80,
             "output_image_shape": [
                 4,
                 120,
                 120
             ],
             "parallel": true,
-            "precache_per_worker": 2,
+            "precache_per_worker": 4,
             "use_gunpowder_precache": true
         },
-        "update_steps": 10000,
+        "update_steps": 100000,
         "val_dataloader": {
             "batch_size": 1,
             "input_image_shape": [
@@ -416,7 +457,7 @@
                 212,
                 212
             ],
-            "num_workers": 20,
+            "num_workers": 80,
             "output_image_shape": [
                 4,
                 120,
@@ -494,6 +535,7 @@
                         {
                             "pad": {
                                 "key": "RAW",
+                                "mode": "reflect",
                                 "size": null
                             }
                         },
@@ -503,9 +545,9 @@
                                 "size": {
                                     "coordinate": {
                                         "_positional": [
-                                            450,
-                                            290,
-                                            290
+                                            300,
+                                            280,
+                                            280
                                         ]
                                     }
                                 }
@@ -517,9 +559,9 @@
                                 "size": {
                                     "coordinate": {
                                         "_positional": [
-                                            450,
-                                            290,
-                                            290
+                                            300,
+                                            280,
+                                            280
                                         ]
                                     }
                                 }
@@ -568,7 +610,7 @@
                     }
                 ]
             },
-            "precache_per_worker": 2,
+            "precache_per_worker": 4,
             "use_gunpowder_precache": false
         },
         "val_log": 1000

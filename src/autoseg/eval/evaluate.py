@@ -49,6 +49,7 @@ class EvaluateAnnotations:
         roi_shape,
         compute_mincut_metric,
         labels,
+        skel_path,
         thresholds_minmax=[0.2, 0.9],
         thresholds_step=0.20,
         **kwargs,
@@ -59,7 +60,8 @@ class EvaluateAnnotations:
         self.edges_table = edges_table
         self.lut_dir = lut_dir
         self.skeletons_file = (
-            "/home/anton/github/autoseg/src/autoseg/eval/skel_filtered.graphml"
+            # "/home/anton/github/autoseg/src/autoseg/eval/skel_filtered.graphml"
+            skel_path
         )
         if roi_offset is not None:
             self.roi = Roi(roi_offset, roi_shape).intersect(self.labels.roi)
@@ -126,7 +128,9 @@ class EvaluateAnnotations:
         )
 
     def read_skeletons(self):
+        print(self.skeletons_file)
         skels = nx.read_graphml(self.skeletons_file)
+        print(len(skels.nodes()))
 
         # remove outside nodes and edges
         remove_nodes = []
@@ -560,7 +564,9 @@ class EvaluateAnnotations:
             seg = seg[:c_z, :c_y, :c_x]
 
         # eval
-        metrics = rand_voi(labels, seg, return_cluster_scores=return_cluster_scores)
+        metrics = rand_voi(
+            labels.astype(np.uint64), seg, return_cluster_scores=return_cluster_scores
+        )
 
         return metrics
 
@@ -655,6 +661,14 @@ def get_site_fragment_lut(fragments, sites):
 
     start = time.time()
     fragments.materialize()
+    print(fragments.roi)
+    for _, site in sites:
+        if not fragments.roi.intersects(
+            Roi((site["position_z"], site["position_y"], site["position_x"]), (1, 1, 1))
+        ):
+            print(site)
+            print(fragments.roi)
+
     fragment_ids = np.array(
         [
             fragments[
@@ -735,77 +749,79 @@ if __name__ == "__main__":
     # frags_file = Path(get_artifact_base_path(config)) / Path(
     #    "predictions/step-50000/oblique_prediction.zarr"
     # )
-    frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr"
-    print(frag_path)
-    frags_files = glob.glob(frag_path)
-    print("Starting evaluation", len(frags_files))
-    for frags_file in frags_files:
-        # database name
-        rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}".lower()
-        frags_file = Path(frags_file).absolute().as_posix()
-        # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
-        # frags_file = "test.zarr"
-        # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
-        # merge_function = "mean"
+    for i in range(len(config["predict"]["output"])):
+        frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['output'][i]['path']}"
+        print(frag_path)
+        frags_files = glob.glob(frag_path)
+        print("Starting evaluation", len(frags_files))
+        for frags_file in frags_files:
+            # database name
+            rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}_{config['predict']['output'][i]['path'].split('.zarr')[0]}".lower()
+            frags_file = Path(frags_file).absolute().as_posix()
+            # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
+            # frags_file = "test.zarr"
+            # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
+            # merge_function = "mean"
 
-        # frags_file = sys.argv[1]
-        # frag_str = sys.argv[2]
-        # merge_function = sys.argv[3]
-        # frags_file = "../oblique.zarr"
-        frag_str = "frags"
-        merge_function = "mean"
+            # frags_file = sys.argv[1]
+            # frag_str = sys.argv[2]
+            # merge_function = sys.argv[3]
+            # frags_file = "../oblique.zarr"
+            frag_str = "frags"
+            merge_function = "mean"
 
-        step = frags_file.split("step-")[1].split("/")[0]
-        if step == "0":
-            continue
-        results_out_dir = (
-            Path(get_artifact_base_path(config))
-            / Path(config["evaluation"]["results_dir"])
-            / Path(f"step-{step}")
-        )
-        results_out_dir = results_out_dir.absolute().as_posix() + "/"
-        # results_out_dir = f"./results"
+            step = frags_file.split("step-")[1].split("/")[0]
+            if step == "0":
+                continue
+            results_out_dir = (
+                Path(get_artifact_base_path(config))
+                / Path(config["evaluation"]["results_dir"])
+                / Path(f"step-{step}")
+                / Path(config["evaluation"]["output"][i])
+            )
+            results_out_dir = results_out_dir.absolute().as_posix()
+            # results_out_dir = f"./results"
 
-        # frags_ds = os.path.join("repost",frag_str,"fragments")
-        frags_ds = "frags"
-        # edges_table = "edges_"+merge_function
-        # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
-        lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
-        print(frags_file, frags_ds)
-        print(results_out_dir)
+            # frags_ds = os.path.join("repost",frag_str,"fragments")
+            frags_ds = "frags"
+            # edges_table = "edges_"+merge_function
+            # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
+            lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
+            print(frags_file, frags_ds)
+            print(results_out_dir)
 
-        fragments = open_ds(frags_file, frags_ds)
-        roi = fragments.roi
-        roi_offset = roi.get_offset()
-        # print(roi_offset)
-        # print(fragments.voxel_size)
-        # exit()
-        # roi_offset = roi_offset.snap_to_grid(fragments.voxel_size,mode="shrink")
-        roi_shape = roi.get_shape()
-        compute_mincut_metric = True
+            fragments = open_ds(frags_file, frags_ds)
+            roi = fragments.roi
+            roi_offset = roi.get_offset()
+            # print(roi_offset)
+            # print(fragments.voxel_size)
+            # exit()
+            # roi_offset = roi_offset.snap_to_grid(fragments.voxel_size,mode="shrink")
+            roi_shape = roi.get_shape()
+            compute_mincut_metric = True
 
-        gt_labels = config["evaluation"]["ground_truth_labels"][0]
+            gt_labels = config["evaluation"]["ground_truth_labels"][i]
 
-        edges_table = None
-        args = None
-        evaluate = EvaluateAnnotations(
-            frags_file,
-            frags_ds,
-            rag_path,
-            edges_table,
-            lut_dir,
-            roi_offset,
-            roi_shape,
-            compute_mincut_metric,
-            labels=open_ds(
-                get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
-            ),
-        )
+            edges_table = None
+            args = None
+            evaluate = EvaluateAnnotations(
+                frags_file,
+                frags_ds,
+                rag_path,
+                edges_table,
+                lut_dir,
+                roi_offset,
+                roi_shape,
+                compute_mincut_metric,
+                labels=open_ds(
+                    get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
+                ),
+                skel_path=config["evaluation"]["ground_truth_skeletons"][i],
+            )
 
-        ret = evaluate.evaluate()
-        args = parse_str(frag_str)
+            ret = evaluate.evaluate()
+            args = parse_str(frag_str)
 
-        os.makedirs(results_out_dir, exist_ok=True)
-        print(results_out_dir)
-        with open(os.path.join(results_out_dir, f"result.json"), "w") as f:
-            json.dump(args | ret, f, indent=4)
+            os.makedirs(os.path.dirname(Path(results_out_dir)), exist_ok=True)
+            with open(results_out_dir, "w") as f:
+                json.dump(args | ret, f, indent=4)

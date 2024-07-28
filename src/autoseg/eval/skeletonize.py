@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 import numpy as np
 import funlib.persistence
@@ -94,6 +95,8 @@ def convert_to_nx(skels, roi):
 
 
 if __name__ == "__main__":
+    in_f = sys.argv[1]
+    in_d = sys.argv[2]
     params = {
         "scale": 1.5,
         "const": 300,  # physical units
@@ -106,13 +109,12 @@ if __name__ == "__main__":
         "max_paths": 300,  # default None
     }
 
-    path = get_dataset_path("SynapseWeb/kh2015/oblique").as_posix().replace(".zip", "")
-    skels = skeletonize(path, "labels_f_r_eroded", params)
-    # skels = skeletonize(path, "labels_filtered_relabeled", params)
-    # skels = skeletonize(path, "labels/s0", params)
+    # path = get_dataset_path("SynapseWeb/kh2015/oblique").as_posix().replace(".zip", "")
+    # skels = skeletonize(in_f, "labels_f_r_eroded", params)
+    skels = skeletonize(in_f, in_d, params)
 
-    out_f = f"./skel_filtered.graphml"
-    os.makedirs(os.path.dirname(out_f), exist_ok=True)
+    out_f = in_f.replace("zarr", "graphml")
+    print(out_f)
 
     G = convert_to_nx(skels[1], skels[2])
     print(f"writing..{out_f}")
