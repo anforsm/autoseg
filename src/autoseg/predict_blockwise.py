@@ -126,7 +126,6 @@ def predict_blockwise(
             num_workers=1,
         )
     else:
-        pass
         # pipeline += gp.PrintProfilingStats()
         pipeline += gp.Scan(chunk_request)
 

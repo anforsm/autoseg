@@ -22,9 +22,11 @@ is_sql = False
 # skels = ["skel.graphml"]
 
 f = get_dataset_path(sys.argv[1]).as_posix()
+print(f)
 raw = sys.argv[2]
 labels = sys.argv[3]
-skels = [sys.argv[4]]
+skels = [get_dataset_path(sys.argv[4]).as_posix()]
+print(skels)
 frags = None
 if len(sys.argv) > 5:
     frags_f = sys.argv[5]

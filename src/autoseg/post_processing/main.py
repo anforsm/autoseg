@@ -17,12 +17,13 @@ if __name__ == "__main__":
     config = sys.argv[1]
     config = read_config(config)
 
-    for i in range(len(config["predict"]["output"])):
+    for i in range(len(config["predict"]["datasets"])):
         with open("post_processing/watershed/config.yaml", "r") as f:
             postproc_yaml_config = yaml.safe_load(f)
 
+        # ASSUMES AFFS IS 0:th OUTPUT
         aff_zarrs = glob.glob(
-            f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['output'][i]['path']}"
+            f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['datasets'][i]['output'][0]['path']}"
         )
         # print(f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/oblique_prediction.zarr")
 
@@ -42,7 +43,7 @@ if __name__ == "__main__":
 
             p["db"][
                 "db_name"
-            ] = f"anton_{config['model']['name']}_{pred_file.split('step-')[1].split('/')[0]}_{config['predict']['output'][i]['path'].split('.zarr')[0]}".lower()
+            ] = f"anton_{config['model']['name']}_{pred_file.split('step-')[1].split('/')[0]}_{config['predict']['datasets'][i]['output'][0]['path'].split('.zarr')[0]}".lower()
 
             print(p["db"]["db_name"])
             # print(p["processing"]["extract_fra"])
@@ -56,15 +57,26 @@ if __name__ == "__main__":
             p["processing"]["extract_fragments"]["mask_file"] = None
             p["processing"]["extract_fragments"]["mask_dataset"] = None
 
-            if "mask" in config["predict"] and config["predict"]["mask"][i] is not None:
+            if (
+                "mask" in config["predict"]["datasets"][i]
+                and config["predict"]["datasets"][i]["mask"] is not None
+                and not (
+                    "use_in_postproc" in config["predict"]["datasets"][i]["mask"]
+                    and not config["predict"]["datasets"][i]["mask"]["use_in_postproc"]
+                )
+            ):
                 p["processing"]["extract_fragments"]["mask_file"] = (
-                    Path(get_dataset_path(config["predict"]["mask"][i]["path"]))
+                    Path(
+                        get_dataset_path(
+                            config["predict"]["datasets"][i]["mask"]["path"]
+                        )
+                    )
                     .absolute()
                     .as_posix()
                 )
                 p["processing"]["extract_fragments"]["mask_dataset"] = config[
                     "predict"
-                ]["mask"][i]["dataset"]
+                ]["datasets"][i]["mask"]["dataset"]
 
             p["processing"]["agglomerate"]["affs_file"] = pred_file
             p["processing"]["agglomerate"]["affs_dataset"] = "preds/affs"

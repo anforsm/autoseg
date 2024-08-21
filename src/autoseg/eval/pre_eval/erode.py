@@ -1,4 +1,5 @@
 from tqdm import tqdm
+import numpy as np
 import zarr
 import numpy as np
 from scipy.ndimage import binary_erosion, grey_erosion
@@ -9,7 +10,7 @@ ds = sys.argv[2]
 
 f = zarr.open(fn, "a")
 
-arr = f[ds][:]
+arr = f[ds][:].astype(np.uint64)
 
 
 eroded = np.zeros_like(arr)

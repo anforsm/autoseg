@@ -12,7 +12,12 @@ DATASET_PATH = ROOT_PATH / Path("datasets/")
 def get_synapseweb_dataset_names(dataset):
     volume = dataset.split("/")[-1]
     repo_id = "/".join(dataset.split("/")[:-1])
-    filename = f"data/{volume}.zarr.zip"
+    if repo_id == "SynapseWeb/team_dentate":
+        filename = f"data/{volume}"
+        if "." not in volume:
+            filename += ".zarr"
+    else:
+        filename = f"data/{volume}.zarr.zip"
     return repo_id, volume, filename
 
 

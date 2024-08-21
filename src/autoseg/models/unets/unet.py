@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 
-DEBUG = False
+DEBUG = True
 # DEBUG = True
 
 
@@ -604,6 +604,5 @@ class UNet(torch.nn.Module):
 
         if self.num_heads == 1:
             return y[0]
-        exit()
 
         return y

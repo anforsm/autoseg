@@ -193,23 +193,28 @@ class EvaluateAnnotations:
         best_nvi_thresh = sorted(
             [(results[thresh]["nvi_sum"], thresh) for thresh in results.keys()]
         )
-        best_edits_thresh = sorted(
-            [
-                (
-                    results[thresh]["total_splits_needed_to_fix_merges"]
-                    + results[thresh]["total_merges_needed_to_fix_splits"],
-                    thresh,
-                )
-                for thresh in results.keys()
-            ]
-        )
-
         best_nvi_thresh = best_nvi_thresh[0][1]
-        best_edits_thresh = best_edits_thresh[0][1]
+        results = {"best_nvi": results[best_nvi_thresh]}
 
-        results = {"best_nvi": results[best_nvi_thresh]} | {
-            "best_edits": results[best_edits_thresh]
-        }
+        if self.compute_mincut_metric:
+            best_edits_thresh = sorted(
+                [
+                    (
+                        results[thresh]["total_splits_needed_to_fix_merges"]
+                        + results[thresh]["total_merges_needed_to_fix_splits"],
+                        thresh,
+                    )
+                    for thresh in results.keys()
+                ]
+            )
+
+            best_edits_thresh = best_edits_thresh[0][1]
+
+            # results |= {
+            #    "best_edits": results[best_edits_thresh]
+            # }
+            results["best_edits"] = results[best_edits_thresh]
+
         return results
 
     def get_site_segment_ids(self, threshold):
@@ -485,7 +490,6 @@ class EvaluateAnnotations:
         logger.info("RAG contains %d nodes/%d edges", len(nodes), len(edges))
 
         rag = nx.Graph()
-        print(rag)
         node_list = [(n["id"], {"segment_id": n["segment_id"]}) for n in nodes]
         # edge_list = [
         #     (e["u"], e["v"], {"merge_score": e["merge_score"]})
@@ -749,14 +753,14 @@ if __name__ == "__main__":
     # frags_file = Path(get_artifact_base_path(config)) / Path(
     #    "predictions/step-50000/oblique_prediction.zarr"
     # )
-    for i in range(len(config["predict"]["output"])):
-        frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['output'][i]['path']}"
+    for i in range(len(config["predict"]["datasets"])):
+        frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['datasets'][i]['output'][0]['path']}"
         print(frag_path)
         frags_files = glob.glob(frag_path)
         print("Starting evaluation", len(frags_files))
         for frags_file in frags_files:
             # database name
-            rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}_{config['predict']['output'][i]['path'].split('.zarr')[0]}".lower()
+            rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}_{config['predict']['datasets'][i]['output'][0]['path'].split('.zarr')[0]}".lower()
             frags_file = Path(frags_file).absolute().as_posix()
             # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
             # frags_file = "test.zarr"
@@ -777,7 +781,7 @@ if __name__ == "__main__":
                 Path(get_artifact_base_path(config))
                 / Path(config["evaluation"]["results_dir"])
                 / Path(f"step-{step}")
-                / Path(config["evaluation"]["output"][i])
+                / Path(config["evaluation"]["datasets"][i]["output"])
             )
             results_out_dir = results_out_dir.absolute().as_posix()
             # results_out_dir = f"./results"
@@ -800,7 +804,10 @@ if __name__ == "__main__":
             roi_shape = roi.get_shape()
             compute_mincut_metric = True
 
-            gt_labels = config["evaluation"]["ground_truth_labels"][i]
+            gt_labels = config["evaluation"]["datasets"][i]["ground_truth_labels"]
+            skel_path = config["evaluation"]["datasets"][i]["ground_truth_skeletons"]
+            skel_path = get_dataset_path(skel_path)
+            print(skel_path)
 
             edges_table = None
             args = None
@@ -816,7 +823,7 @@ if __name__ == "__main__":
                 labels=open_ds(
                     get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
                 ),
-                skel_path=config["evaluation"]["ground_truth_skeletons"][i],
+                skel_path=skel_path,
             )
 
             ret = evaluate.evaluate()
