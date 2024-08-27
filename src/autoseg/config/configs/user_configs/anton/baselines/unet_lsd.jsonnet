@@ -1,5 +1,6 @@
 # This enhanced UNet uses Local Shape Descriptors, Batch Normalization and GeLU Activation.
 local baseline = import "autoseg/user_configs/anton/baselines/unet";
+local dentate_prediction = import "autoseg/user_configs/anton/utils/dentate_predict_lsd";
 
 local lsd_target = {lsd_target: [
   {add_local_shape_descriptor: {
@@ -56,4 +57,4 @@ baseline
         num_channels: 10,
       }]
   }
-}
+} + dentate_prediction

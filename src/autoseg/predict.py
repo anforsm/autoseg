@@ -194,7 +194,7 @@ def predict_zarr(
         output_roi = source_node.spec[raw].roi
 
     ndims = len(input_roi.shape)
-    block_read_roi = Roi((0,) * ndims, input_image_size) - context
+    block_read_roi = Roi((0,) * ndims, input_image_size)
     block_write_roi = Roi((0,) * ndims, output_image_size)
 
     o_path = output_zarrs[0]["path"]

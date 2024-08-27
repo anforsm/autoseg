@@ -38,6 +38,7 @@ local modifications = {
   },
   predict+: {
     predict_with_every_n_checkpoint: 1,
+    multi_gpu: false,
     datasets: [
       {
         name: "Oblique",

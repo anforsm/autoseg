@@ -23,6 +23,11 @@ local datasets = ['BBCHZ', 'BLSNK', 'BRNLG', 'CLZBJ', 'CRQCR', 'CSKBZ', 'DRZNC',
             "path": dataset + "_prediction.zarr",
             "dataset": "preds/affs",
             "num_channels": 3
+          },
+          {
+            "path": dataset + "_prediction.zarr",
+            "dataset": "preds/lsds",
+            "num_channels": 10
           }
         ]
       },
