@@ -174,3 +174,5 @@ temp_config.yaml
 
 config.py
 result.json
+
+service_account.json
