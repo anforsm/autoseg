@@ -14,7 +14,7 @@ from autoseg.utils import get_artifact_base_path
 scripts = {
     "train": "train.py",
     "predict": "predict.py",
-    "postproc": "post_processing/watershed/main.py",
+    "postproc": "post_processing/main.py",
     "evaluate": "eval/evaluate.py",
 }
 
@@ -63,7 +63,8 @@ def initialize_sheet(sheet):
         sheet.update_cell(row_index, 1, model_name)
 
 
-def update_sheet(sheet, script_number, time, is_start):
+def update_sheet(sheet, script_alias, time, is_start):
+    script_number = list(scripts.keys()).index(script_alias) + 1
     col = script_number * 2 if is_start else script_number * 2 + 1
     sheet.update_cell(row_index, col, time.isoformat())
 
