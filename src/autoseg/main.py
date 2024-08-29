@@ -142,7 +142,7 @@ if evaluate_ran:
     model_name = read_config(config_path)["model"]["name"]
 
     # Create the full path for the results folder
-    results_folder = os.path.join(base_path, model_name)
+    results_folder = os.path.join(base_path, model_name, "results")
 
     # Zip the results folder
     zip_file_path = zip_folder(results_folder, os.path.join(base_path, model_name))

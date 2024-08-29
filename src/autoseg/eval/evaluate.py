@@ -26,11 +26,36 @@ import time
 import tqdm
 
 import sys
+import multiprocessing
 
 sys.setrecursionlimit(10_000)
 
 sys.path.append("../blockwise")
 from config import db_config, rag_config
+
+import multiprocessing.pool
+
+
+class NoDaemonProcess(multiprocessing.Process):
+    @property
+    def daemon(self):
+        return False
+
+    @daemon.setter
+    def daemon(self, value):
+        pass
+
+
+class NoDaemonContext(type(multiprocessing.get_context())):
+    Process = NoDaemonProcess
+
+
+# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+# because the latter is only a wrapper function, not a proper class.
+class NestablePool(multiprocessing.pool.Pool):
+    def __init__(self, *args, **kwargs):
+        kwargs["context"] = NoDaemonContext()
+        super(NestablePool, self).__init__(*args, **kwargs)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -128,9 +153,7 @@ class EvaluateAnnotations:
         )
 
     def read_skeletons(self):
-        print(self.skeletons_file)
         skels = nx.read_graphml(self.skeletons_file)
-        print(len(skels.nodes()))
 
         # remove outside nodes and edges
         remove_nodes = []
@@ -670,7 +693,6 @@ def get_site_fragment_lut(fragments, sites):
         if not fragments.roi.intersects(
             Roi((site["position_z"], site["position_y"], site["position_x"]), (1, 1, 1))
         ):
-            print(site)
             print(fragments.roi)
 
     fragment_ids = np.array(
@@ -753,82 +775,104 @@ if __name__ == "__main__":
     # frags_file = Path(get_artifact_base_path(config)) / Path(
     #    "predictions/step-50000/oblique_prediction.zarr"
     # )
-    for i in range(len(config["predict"]["datasets"])):
+
+    # pool1.map(lambda i: evaluate_dataset(config, i), range(len(config["predict"]["datasets"])))
+    # for i in range(len(config["predict"]["datasets"])):
+
+    def evaluate_dataset(args):
+        config, i = args
         frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['datasets'][i]['output'][0]['path']}"
-        print(frag_path)
         frags_files = glob.glob(frag_path)
         print("Starting evaluation", len(frags_files))
-        for frags_file in frags_files:
-            # database name
-            rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}_{config['predict']['datasets'][i]['output'][0]['path'].split('.zarr')[0]}".lower()
-            frags_file = Path(frags_file).absolute().as_posix()
-            # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
-            # frags_file = "test.zarr"
-            # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
-            # merge_function = "mean"
+        pool2 = NestablePool(2)
+        args2 = [(config, i, frags_file) for frags_file in frags_files]
+        # for arg in args2:
+        #    evaluate_frags_file(arg)
+        for _ in pool2.imap_unordered(evaluate_frags_file, args2):
+            pass
 
-            # frags_file = sys.argv[1]
-            # frag_str = sys.argv[2]
-            # merge_function = sys.argv[3]
-            # frags_file = "../oblique.zarr"
-            frag_str = "frags"
-            merge_function = "mean"
+        # pool2.map(lambda frags_file: evaluate_frags_file(config, i, frags_file), frags_files)
+        # for frags_file in frags_files:
+        #    evaluate_frags_file(config, i, frags_file)
 
-            step = frags_file.split("step-")[1].split("/")[0]
-            if step == "0":
-                continue
-            results_out_dir = (
-                Path(get_artifact_base_path(config))
-                / Path(config["evaluation"]["results_dir"])
-                / Path(f"step-{step}")
-                / Path(config["evaluation"]["datasets"][i]["output"])
-            )
-            results_out_dir = results_out_dir.absolute().as_posix()
-            # results_out_dir = f"./results"
+    def evaluate_frags_file(args):
+        config, i, frags_file = args
+        # database name
+        rag_path = f"anton_{config['model']['name']}_{frags_file.split('step-')[1].split('/')[0]}_{config['predict']['datasets'][i]['output'][0]['path'].split('.zarr')[0]}".lower()
+        frags_file = Path(frags_file).absolute().as_posix()
+        # frags_file = "/scratch/04101/vvenu/sparsity_experiments/cremi_c/bootstrapped_nets/affs-2d_dense/rep_1/train.zarr"
+        # frags_file = "test.zarr"
+        # frag_str = "affs_50000_FalseNorm_FalseBoundaryMask50_15MinSeedDist_0FragFilter"
+        # merge_function = "mean"
 
-            # frags_ds = os.path.join("repost",frag_str,"fragments")
-            frags_ds = "frags"
-            # edges_table = "edges_"+merge_function
-            # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
-            lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
-            print(frags_file, frags_ds)
-            print(results_out_dir)
+        # frags_file = sys.argv[1]
+        # frag_str = sys.argv[2]
+        # merge_function = sys.argv[3]
+        # frags_file = "../oblique.zarr"
+        frag_str = "frags"
+        merge_function = "mean"
 
-            fragments = open_ds(frags_file, frags_ds)
-            roi = fragments.roi
-            roi_offset = roi.get_offset()
-            # print(roi_offset)
-            # print(fragments.voxel_size)
-            # exit()
-            # roi_offset = roi_offset.snap_to_grid(fragments.voxel_size,mode="shrink")
-            roi_shape = roi.get_shape()
-            compute_mincut_metric = True
+        step = frags_file.split("step-")[1].split("/")[0]
+        if step == "0":
+            return
+        results_out_dir = (
+            Path(get_artifact_base_path(config))
+            / Path(config["evaluation"]["results_dir"])
+            / Path(f"step-{step}")
+            / Path(config["evaluation"]["datasets"][i]["output"])
+        )
+        results_out_dir = results_out_dir.absolute().as_posix()
+        # results_out_dir = f"./results"
 
-            gt_labels = config["evaluation"]["datasets"][i]["ground_truth_labels"]
-            skel_path = config["evaluation"]["datasets"][i]["ground_truth_skeletons"]
-            skel_path = get_dataset_path(skel_path)
-            print(skel_path)
+        # frags_ds = os.path.join("repost",frag_str,"fragments")
+        frags_ds = "frags"
+        # edges_table = "edges_"+merge_function
+        # rag_path = os.path.join(frags_file,"repost",frag_str,"rag.db")
+        lut_dir = os.path.join(frags_file, "luts", "fragment_segment")
+        print(frags_file, frags_ds)
+        print(results_out_dir)
 
-            edges_table = None
-            args = None
-            evaluate = EvaluateAnnotations(
-                frags_file,
-                frags_ds,
-                rag_path,
-                edges_table,
-                lut_dir,
-                roi_offset,
-                roi_shape,
-                compute_mincut_metric,
-                labels=open_ds(
-                    get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
-                ),
-                skel_path=skel_path,
-            )
+        fragments = open_ds(frags_file, frags_ds)
+        roi = fragments.roi
+        roi_offset = roi.get_offset()
+        # print(roi_offset)
+        # print(fragments.voxel_size)
+        # exit()
+        # roi_offset = roi_offset.snap_to_grid(fragments.voxel_size,mode="shrink")
+        roi_shape = roi.get_shape()
+        compute_mincut_metric = True
 
-            ret = evaluate.evaluate()
-            args = parse_str(frag_str)
+        gt_labels = config["evaluation"]["datasets"][i]["ground_truth_labels"]
+        skel_path = config["evaluation"]["datasets"][i]["ground_truth_skeletons"]
+        skel_path = get_dataset_path(skel_path)
+        print(skel_path)
 
-            os.makedirs(os.path.dirname(Path(results_out_dir)), exist_ok=True)
-            with open(results_out_dir, "w") as f:
-                json.dump(args | ret, f, indent=4)
+        edges_table = None
+        args = None
+        evaluate = EvaluateAnnotations(
+            frags_file,
+            frags_ds,
+            rag_path,
+            edges_table,
+            lut_dir,
+            roi_offset,
+            roi_shape,
+            compute_mincut_metric,
+            labels=open_ds(
+                get_dataset_path(gt_labels["path"]).as_posix(), gt_labels["dataset"]
+            ),
+            skel_path=skel_path,
+        )
+
+        ret = evaluate.evaluate()
+        args = parse_str(frag_str)
+
+        os.makedirs(os.path.dirname(Path(results_out_dir)), exist_ok=True)
+        with open(results_out_dir, "w") as f:
+            json.dump(args | ret, f, indent=4)
+
+    pool1 = NestablePool(2)
+    args1 = [(config, i) for i in range(len(config["predict"]["datasets"]))]
+    # args1 = [("1", 2) for i in range(len(config["predict"]["datasets"]))]
+    for _ in pool1.imap_unordered(evaluate_dataset, args1):
+        pass
