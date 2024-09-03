@@ -176,3 +176,5 @@ config.py
 result.json
 
 service_account.json
+
+temp_configs

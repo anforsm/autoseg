@@ -17,7 +17,10 @@ def get_synapseweb_dataset_names(dataset):
         if "." not in volume:
             filename += ".zarr"
     else:
-        filename = f"data/{volume}.zarr.zip"
+        if dataset.endswith(".graphml"):
+            filename = f"data/{volume}"
+        else:
+            filename = f"data/{volume}.zarr.zip"
     return repo_id, volume, filename
 
 

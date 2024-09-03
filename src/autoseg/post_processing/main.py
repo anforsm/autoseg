@@ -92,13 +92,17 @@ if __name__ == "__main__":
             p["processing"]["extract_segmentation"]["seg_file"] = pred_file
             p["processing"]["extract_segmentation"]["seg_dataset"] = "seg"
 
-            yaml.dump(p, open("post_processing/watershed/temp_config.yaml", "w"))
+            config_path = (
+                f"post_processing/watershed/temp_configs/{config['model']['name']}.yaml"
+            )
+
+            yaml.dump(p, open(config_path, "w"))
 
             subprocess.run(
                 [
                     "python",
                     "post_processing/watershed/02_extract_fragments_blockwise.py",
-                    "post_processing/watershed/temp_config.yaml",
+                    config_path,
                 ],
                 check=True,
             )
@@ -106,7 +110,7 @@ if __name__ == "__main__":
                 [
                     "python",
                     "post_processing/watershed/03_agglomerate_blockwise.py",
-                    "post_processing/watershed/temp_config.yaml",
+                    config_path,
                 ],
                 check=True,
             )
@@ -114,7 +118,7 @@ if __name__ == "__main__":
                 [
                     "python",
                     "post_processing/watershed/04_find_segments.py",
-                    "post_processing/watershed/temp_config.yaml",
+                    config_path,
                 ],
                 check=True,
             )
@@ -122,7 +126,7 @@ if __name__ == "__main__":
                 [
                     "python",
                     "post_processing/watershed/05_extract_segments_from_lut.py",
-                    "post_processing/watershed/temp_config.yaml",
+                    config_path,
                 ],
                 check=True,
             )

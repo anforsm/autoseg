@@ -10,7 +10,7 @@ local modifications = {
     update_steps: 200000,
     log_snapshot_every: 1000,
     save_every: 25000,
-    val_log: 250000,
+    val_log: 10000,
     num_val_samples: 100,
     logging+: {
       wandb: true,
@@ -19,7 +19,7 @@ local modifications = {
       pipeline+: {
         source: [
           [
-            [zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
+            [zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
           ],
           {random_provider: {}}
         ],
@@ -30,8 +30,8 @@ local modifications = {
     source: [
       [
         [zarrsource.zarr_source("SynapseWeb/kh2015/apical", "s1")] + pad,
-        [zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
-        [zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
+        #[zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
+        #[zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
       ],
       {random_provider: {}}
     ],
@@ -57,24 +57,6 @@ local modifications = {
           num_channels: 3,
         }]
       },
-      {
-        name: "BBCHZ",
-        shape_increase: [-12, 405, 405],
-        mask: {
-          path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
-          dataset: "volumes/object_mask/s1",
-          use_in_postproc: false,
-        },
-        source: {
-          path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
-          dataset: "volumes/image/s1",
-        },
-        output: [{
-          path: "BBCHZ_prediction.zarr",
-          dataset: "preds/affs",
-          num_channels: 3,
-        }]
-      }
     ],
   },
   evaluation+: {
@@ -83,26 +65,17 @@ local modifications = {
     datasets: [
      {
        name: "Oblique",
-       ground_truth_skeletons: "eval/skel_filtered.graphml",
+       ground_truth_skeletons: "SynapseWeb/kh2015/oblique.graphml",
        ground_truth_labels: {
          path: "SynapseWeb/kh2015/oblique",
          dataset: "labels/s1"
        },
        output: "oblique_results.json"
      },
-     {
-       name: "BBCHZ",
-       ground_truth_skeletons: "eval/BBCHZ.graphml",
-       ground_truth_labels: {
-         path: "/home/anton/github/autoseg/src/autoseg/eval/BBCHZ.zarr",
-         dataset: "volumes/neuron_ids/s1",
-       },
-       output: "BBCHZ_results.json"
-     }
     ]
   },
   model: {
-    name: "UNet_OSA",
+    name: "v2_UNet",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
@@ -133,4 +106,4 @@ local modifications = {
 
 };
 
-defaults + modifications + dentate_prediction
+defaults + modifications# + dentate_prediction

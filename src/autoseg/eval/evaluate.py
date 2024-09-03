@@ -784,7 +784,7 @@ if __name__ == "__main__":
         frag_path = f"{Path(get_artifact_base_path(config)).absolute()}/predictions/step-*/{config['predict']['datasets'][i]['output'][0]['path']}"
         frags_files = glob.glob(frag_path)
         print("Starting evaluation", len(frags_files))
-        pool2 = NestablePool(2)
+        pool2 = NestablePool()
         args2 = [(config, i, frags_file) for frags_file in frags_files]
         # for arg in args2:
         #    evaluate_frags_file(arg)
@@ -871,7 +871,7 @@ if __name__ == "__main__":
         with open(results_out_dir, "w") as f:
             json.dump(args | ret, f, indent=4)
 
-    pool1 = NestablePool(2)
+    pool1 = NestablePool(1)
     args1 = [(config, i) for i in range(len(config["predict"]["datasets"]))]
     # args1 = [("1", 2) for i in range(len(config["predict"]["datasets"]))]
     for _ in pool1.imap_unordered(evaluate_dataset, args1):
