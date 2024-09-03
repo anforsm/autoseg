@@ -2,6 +2,7 @@ import sys
 import yaml
 import glob
 from tqdm import tqdm
+import os
 
 from autoseg.config import read_config
 from autoseg.datasets import get_dataset_path
@@ -95,6 +96,8 @@ if __name__ == "__main__":
             config_path = (
                 f"post_processing/watershed/temp_configs/{config['model']['name']}.yaml"
             )
+
+            os.makedirs("post_processing/watershed/temp_configs", exist_ok=True)
 
             yaml.dump(p, open(config_path, "w"))
 
