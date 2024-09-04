@@ -106,7 +106,7 @@ def upload_to_drive(file_path, folder_id):
 
 
 def update_sheet_with_link(sheet, link):
-    sheet.update_cell(row_index, 8, link)
+    sheet.update_cell(row_index, 10, link)
 
 
 # Replace with your actual Google Sheet URL

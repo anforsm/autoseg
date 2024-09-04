@@ -22,7 +22,7 @@ baseline
   } + lsd_target,
 
   model+: {
-    name: "UNet_LSD_2",
+    name: "v2_UNet_LSD",
     hyperparameters+: {
       output_shapes+: [10]
     }
@@ -51,10 +51,30 @@ baseline
   },
 
   predict+: {
-    outputs+: [{
-        path: "multiout.zarr",
-        dataset: "preds/lsds",
-        num_channels: 10,
-      }]
+    datasets: [
+      {
+        name: "Oblique",
+        shape_increase: [-12, 405, 405],
+        mask: {
+          path: "SynapseWeb/kh2015/oblique",
+          dataset: "labels_mask/s1"
+        },
+        source: {
+          path: "SynapseWeb/kh2015/oblique",
+          dataset: "raw/s1"
+        },
+        output: [{
+          path: "oblique_prediction.zarr",
+          dataset: "preds/affs",
+          num_channels: 3,
+        },
+        {
+          path: "oblique_prediction.zarr",
+          dataset: "preds/lsds",
+          num_channels: 10,
+        }]
+      },
+    ],
+
   }
 } + dentate_prediction

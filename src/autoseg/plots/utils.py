@@ -6,6 +6,8 @@ import wandb
 import pandas as pd
 import seaborn as sns
 from collections import defaultdict
+from autoseg.utils import get_artifact_base_path
+from pathlib import Path
 
 
 class DefaultDict(defaultdict):
@@ -104,3 +106,114 @@ def create_dataframe(models):
                     metrics[key][i] for key in metrics.keys()
                 ]
     return df
+
+
+import gspread
+import gdown
+import zipfile
+import os
+import re
+from google.oauth2.service_account import Credentials
+
+
+def get_file_id(url):
+    # Handle different types of Google Drive links
+    file_id = None
+    patterns = [
+        r"https://drive\.google\.com/file/d/([\w-]+)",
+        r"https://drive\.google\.com/open\?id=([\w-]+)",
+        r"https://drive\.google\.com/uc\?id=([\w-]+)",
+        r"https://docs\.google\.com/uc\?id=([\w-]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            file_id = match.group(1)
+            break
+    return file_id
+
+
+def download_results(config):
+    sheet_url = "https://docs.google.com/spreadsheets/d/1KDPX08F_CjH9GCaCom_WpnSfqSdDkYehZQ8OVxHx9Ow/edit?gid=0#gid=0"
+
+    # Connect to the Google Sheet
+    client = gspread.service_account(
+        filename="/home/anton/github/autoseg/src/autoseg/service_account.json"
+    )
+    sheet = client.open_by_url(sheet_url).worksheet("Sheet1")
+    run_name = config["model"]["name"]
+
+    # Find the row for the given run_name
+    all_values = sheet.get_all_values()
+    row = next((row for row in all_values if row[0] == run_name), None)
+
+    if not row:
+        print(f"No results found for run: {run_name}")
+        return
+
+    # Extract the results link
+    results_link = row[9]
+
+    if not results_link:
+        print(f"No results link found for run: {run_name}")
+        return
+
+    # Get file ID from the link
+    file_id = get_file_id(results_link)
+    if not file_id:
+        print(f"Invalid Google Drive link: {results_link}")
+        return
+
+    # Download the file using gdown
+    base_path = (
+        (
+            Path("/home/anton/github/autoseg/src/autoseg")
+            / Path(get_artifact_base_path(config))
+        )
+        .absolute()
+        .as_posix()
+    )
+    os.makedirs(base_path, exist_ok=True)
+    zip_path = f"{base_path}/results.zip"
+    url = f"https://drive.google.com/uc?id={file_id}"
+
+    print(f"Attempting to download from: {url} to: {zip_path}")
+    try:
+        output = gdown.download(url, zip_path, quiet=False)
+        if output is None:
+            print(f"Failed to download results for run: {run_name}")
+            return
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        return
+
+    if not os.path.exists(zip_path):
+        print(f"Failed to download results for run: {run_name}")
+        return
+
+    # Extract the zip file
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            path = f"{base_path}/{config['evaluation']['results_dir']}"
+            zip_ref.extractall(path)
+        print(f"Results extracted to {path}")
+    except zipfile.BadZipFile:
+        print(
+            f"The downloaded file is not a valid zip file. It may be an HTML error page."
+        )
+        with open(zip_path, "r") as f:
+            print(f"File contents: {f.read()[:1000]}...")  # Print first 1000 characters
+        return
+    except Exception as e:
+        print(f"Error extracting zip file: {str(e)}")
+        return
+
+    # Remove the zip file
+    os.remove(zip_path)
+
+    print(f"Results downloaded and extracted to {path}")
+
+
+# Example usage
+if __name__ == "__main__":
+    download_results("v2_UNet_run_1")
