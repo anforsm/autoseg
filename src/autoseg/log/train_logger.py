@@ -45,7 +45,7 @@ class Logger:
 
         wandb.init(
             name=name,
-            project="autoseg",
+            project="autoseg convnext",
             config=self.config,
         )
 

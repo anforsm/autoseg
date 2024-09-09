@@ -1,0 +1,23 @@
+local defaults = import "autoseg/user_configs/anton/baselines/unet";
+local pad = import "autoseg/defaults/pad";
+local zarrsource = import "autoseg/defaults/zarrsource";
+
+defaults + {
+  model+: {
+    name: "v2_UNeXt_11.2",
+    path: "checkpoints/",
+    #hf_path: "anforsm/" + self.name,
+    hf_path: null,
+    class: "UNeXt",
+    version: "11.2",
+    #input_image_shape: [54, 402, 402],
+    input_image_shape: [54, 150, 150],
+    output_image_shape: [26, 60, 60],
+    #output_image_shape: [42, 191, 191],
+    hyperparameters: {
+      in_channels: 1,
+      output_shapes: [3],
+      num_fmaps: 12,
+    }
+  },
+}

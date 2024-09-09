@@ -15,7 +15,7 @@ defaults + {
   },
   model+: {
     local img_shape = [48, 272, 272],
-    name: "UNETR",
+    name: "v2_UNETR",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
@@ -41,8 +41,4 @@ defaults + {
       num_workers: 40,
     }
   },
-  predict+: {
-    predict_with_every_n_checkpoint: 1,
-    shape_increase: [0, 0, 0],
-  }
 }

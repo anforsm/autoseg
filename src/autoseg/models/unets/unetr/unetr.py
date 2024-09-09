@@ -17,14 +17,14 @@ class SingleDeconv3DBlock(nn.Module):
 
 
 class SingleConv3DBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, kernel_size):
+    def __init__(self, in_planes, out_planes, kernel_size, pad=True):
         super().__init__()
         self.block = nn.Conv3d(
             in_planes,
             out_planes,
             kernel_size=kernel_size,
             stride=1,
-            padding=((kernel_size - 1) // 2),
+            padding=((kernel_size - 1) // 2) if pad else 0,
         )
 
     def forward(self, x):
@@ -32,10 +32,10 @@ class SingleConv3DBlock(nn.Module):
 
 
 class Conv3DBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, kernel_size=3):
+    def __init__(self, in_planes, out_planes, kernel_size=3, pad=True):
         super().__init__()
         self.block = nn.Sequential(
-            SingleConv3DBlock(in_planes, out_planes, kernel_size),
+            SingleConv3DBlock(in_planes, out_planes, kernel_size, pad=pad),
             nn.BatchNorm3d(out_planes),
             nn.ReLU(True),
         )
@@ -45,11 +45,11 @@ class Conv3DBlock(nn.Module):
 
 
 class Deconv3DBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, kernel_size=3):
+    def __init__(self, in_planes, out_planes, kernel_size=3, pad=True):
         super().__init__()
         self.block = nn.Sequential(
             SingleDeconv3DBlock(in_planes, out_planes),
-            SingleConv3DBlock(out_planes, out_planes, kernel_size),
+            SingleConv3DBlock(out_planes, out_planes, kernel_size, pad=pad),
             nn.BatchNorm3d(out_planes),
             nn.ReLU(True),
         )
@@ -241,6 +241,7 @@ class UNETR(nn.Module):
         patch_size=16,
         num_heads=12,
         dropout=0.1,
+        pad_decoder=True,
     ):
         super().__init__()
         self.input_dim = input_dim
@@ -271,42 +272,47 @@ class UNETR(nn.Module):
 
         # U-Net Decoder
         self.decoder0 = nn.Sequential(
-            Conv3DBlock(input_dim, 32, 3), Conv3DBlock(32, 64, 3)
+            Conv3DBlock(input_dim, 32, 3, pad=pad_decoder),
+            Conv3DBlock(32, 64, 3, pad=pad_decoder),
         )
 
         self.decoder3 = nn.Sequential(
-            Deconv3DBlock(embed_dim, 512),
-            Deconv3DBlock(512, 256),
-            Deconv3DBlock(256, 128),
+            Deconv3DBlock(embed_dim, 512, pad=pad_decoder),
+            Deconv3DBlock(512, 256, pad=pad_decoder),
+            Deconv3DBlock(256, 128, pad=pad_decoder),
         )
 
         self.decoder6 = nn.Sequential(
-            Deconv3DBlock(embed_dim, 512),
-            Deconv3DBlock(512, 256),
+            Deconv3DBlock(embed_dim, 512, pad=pad_decoder),
+            Deconv3DBlock(512, 256, pad=pad_decoder),
         )
 
-        self.decoder9 = Deconv3DBlock(embed_dim, 512)
+        self.decoder9 = Deconv3DBlock(embed_dim, 512, pad=pad_decoder)
 
         self.decoder12_upsampler = SingleDeconv3DBlock(embed_dim, 512)
 
         self.decoder9_upsampler = nn.Sequential(
-            Conv3DBlock(1024, 512),
-            Conv3DBlock(512, 512),
-            Conv3DBlock(512, 512),
+            Conv3DBlock(1024, 512, pad=pad_decoder),
+            Conv3DBlock(512, 512, pad=pad_decoder),
+            Conv3DBlock(512, 512, pad=pad_decoder),
             SingleDeconv3DBlock(512, 256),
         )
 
         self.decoder6_upsampler = nn.Sequential(
-            Conv3DBlock(512, 256), Conv3DBlock(256, 256), SingleDeconv3DBlock(256, 128)
+            Conv3DBlock(512, 256, pad=pad_decoder),
+            Conv3DBlock(256, 256, pad=pad_decoder),
+            SingleDeconv3DBlock(256, 128),
         )
 
         self.decoder3_upsampler = nn.Sequential(
-            Conv3DBlock(256, 128), Conv3DBlock(128, 128), SingleDeconv3DBlock(128, 64)
+            Conv3DBlock(256, 128, pad=pad_decoder),
+            Conv3DBlock(128, 128, pad=pad_decoder),
+            SingleDeconv3DBlock(128, 64),
         )
 
         self.decoder0_header = nn.Sequential(
-            Conv3DBlock(128, 64),
-            Conv3DBlock(64, 64),
+            Conv3DBlock(128, 64, pad=pad_decoder),
+            Conv3DBlock(64, 64, pad=pad_decoder),
             SingleConv3DBlock(64, output_dim, 1),
         )
 

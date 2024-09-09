@@ -2,6 +2,7 @@ import torch
 from pathlib import Path
 from .configurable_unet import ConfigurableUNet
 from .configurable_unetr import ConfigurableUNETR
+from .configurable_unext import ConfigurableUNeXt
 from .unets import UNETR
 from transformers import PreTrainedModel
 from huggingface_hub import PyTorchModelHubMixin
@@ -41,6 +42,11 @@ class Model(torch.nn.Module, PyTorchModelHubMixin):
                 # patch_size=16,
                 # embed_dim=32,
                 # num_heads=1
+            )
+        if class_ == "UNeXt":
+            print("unext")
+            self.model = ConfigurableUNeXt(
+                **model_config["hyperparameters"], version=model_config["version"]
             )
 
         self.config = model_config
