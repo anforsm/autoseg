@@ -41,15 +41,12 @@ class ConvPass(nn.Module):
             self.norm1 = LayerNorm(in_channels)
 
             self.conv2 = nn.Conv3d(in_channels, mid_channels, 1)
+            self.act2 = nn.GELU()
 
             self.conv3 = nn.Conv3d(mid_channels, in_channels, 1)
-            self.act3 = nn.GELU()
         else:
             self.conv1 = nn.Conv3d(in_channels, out_channels, 3)
             self.act1 = nn.GELU()
-
-            self.conv2 = nn.Conv3d(out_channels, out_channels, 3)
-            self.act2 = nn.GELU()
 
     def forward(self, x):
         if self.encoder:
@@ -58,17 +55,15 @@ class ConvPass(nn.Module):
             x = self.norm1(x)
 
             x = self.conv2(x)
+            x = self.act2(x)
 
             x = self.conv3(x)
-            x = self.act3(x)
 
             x = UNetResAdd(res, x)
             return x
         else:
             x = self.conv1(x)
             x = self.act1(x)
-            x = self.conv2(x)
-            x = self.act2(x)
             return x
 
 

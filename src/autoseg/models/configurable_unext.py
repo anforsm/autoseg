@@ -1,20 +1,5 @@
 import torch
-from .unets import (
-    ConvPass,
-    UNeXt1,
-    UNeXt2,
-    UNeXt3,
-    UNeXt4,
-    UNeXt5,
-    UNeXt6,
-    UNeXt7,
-    UNeXt8,
-    UNeXt9,
-    UNeXt10,
-    UNeXt11,
-    UNeXt11_2,
-    UNeXt11_3,
-)
+from .unets import ConvPass, unext_a
 
 
 class ConfigurableUNeXt(torch.nn.Module):
@@ -47,36 +32,14 @@ class ConfigurableUNeXt(torch.nn.Module):
 
         num_fmaps = 12
 
-        if version == "1.0":
-            unet = UNeXt1
-        elif version == "2.0":
-            unet = UNeXt2
-        elif version == "3.0":
-            unet = UNeXt3
-        elif version == "4.0":
-            unet = UNeXt4
-        elif version == "5.0":
-            unet = UNeXt5
-        elif version == "6.0":
-            unet = UNeXt6
-        elif version == "7.0":
-            unet = UNeXt7
-        elif version == "7.0":
-            unet = UNeXt7
-        elif version == "8.0":
-            unet = UNeXt8
-        elif version == "9.0":
-            unet = UNeXt9
-        elif version == "10.0":
-            unet = UNeXt10
-        elif version == "11.0":
-            unet = UNeXt11
-        elif version == "11.2":
-            unet = UNeXt11_2
-        elif version == "11.3":
-            unet = UNeXt11_3
+        if version.endswith(".0"):
+            classname = version.replace(".0", "")
+        else:
+            classname = version.replace(".", "_")
 
-        print(unet)
+        print(unext_a)
+        print("loading", classname)
+        unet = getattr(unext_a, "UNeXt" + classname)
 
         self.unet = unet(
             in_channels=in_channels, num_fmaps=num_fmaps, fmap_inc_factor=5

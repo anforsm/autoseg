@@ -1,13 +1,1 @@
-from .unext1 import UNeXt as UNeXt1
-from .unext2 import UNeXt as UNeXt2
-from .unext3 import UNeXt as UNeXt3
-from .unext4 import UNeXt as UNeXt4
-from .unext5 import UNeXt as UNeXt5
-from .unext6 import UNeXt as UNeXt6
-from .unext7 import UNeXt as UNeXt7
-from .unext8 import UNeXt as UNeXt8
-from .unext9 import UNeXt as UNeXt9
-from .unext10 import UNeXt as UNeXt10
-from .unext11 import UNeXt as UNeXt11
-from .unext112 import UNeXt as UNeXt11_2
-from .unext113 import UNeXt as UNeXt11_3
+from . import experiments as unext_a

@@ -4,16 +4,16 @@ local zarrsource = import "autoseg/defaults/zarrsource";
 
 defaults + {
   model+: {
-    name: "v2_UNeXt_5.0",
+    name: "v2_UNeXt_4.0",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
     hf_path: null,
     class: "UNeXt",
-    version: "5.0",
+    version: "0.4.0",
     #input_image_shape: [54, 402, 402],
     input_image_shape: [54, 268, 268],
+    #output_image_shape: [12, 57, 57],
     output_image_shape: [26, 56, 56],
-    #output_image_shape: [42, 191, 191],
     hyperparameters: {
       in_channels: 1,
       output_shapes: [3],

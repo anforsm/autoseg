@@ -52,7 +52,7 @@ processing:
     roi_shape: null
     block_size: null
     context: null
-    num_workers: 50
+    num_workers: 20
 
   find_segments:
     fragments_file: "0.zarr"

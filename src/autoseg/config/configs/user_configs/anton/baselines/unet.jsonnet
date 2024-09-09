@@ -30,8 +30,6 @@ local modifications = {
     source: [
       [
         [zarrsource.zarr_source("SynapseWeb/kh2015/apical", "s1")] + pad,
-        #[zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
-        #[zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
       ],
       {random_provider: {}}
     ],
