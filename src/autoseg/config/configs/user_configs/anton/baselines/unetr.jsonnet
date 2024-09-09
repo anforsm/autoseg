@@ -3,16 +3,6 @@ local pad = import "autoseg/defaults/pad";
 local zarrsource = import "autoseg/defaults/zarrsource";
 
 defaults + {
-  pipeline+: {
-    source: [
-      [
-        [zarrsource.zarr_source("SynapseWeb/kh2015/apical", "s1")] + pad,
-        #[zarrsource.zarr_source("SynapseWeb/kh2015/oblique", "s1")] + pad,
-        #[zarrsource.zarr_source("SynapseWeb/kh2015/spine", "s1")] + pad,
-      ],
-      {random_provider: {}},
-    ],
-  },
   model+: {
     local img_shape = [48, 272, 272],
     name: "v2_UNETR",
@@ -33,12 +23,25 @@ defaults + {
       num_heads: 12,
     }
   },
-  training+: {
-    #logging+: {
-    #  wandb: false
-    #},
-    train_dataloader+: {
-      num_workers: 40,
-    }
+  predict+: {
+    datasets: [
+      {
+        name: "Oblique",
+        shape_increase: [0, 0, 0],
+        mask: {
+          path: "SynapseWeb/kh2015/oblique",
+          dataset: "labels_mask/s1"
+        },
+        source: {
+          path: "SynapseWeb/kh2015/oblique",
+          dataset: "raw/s1"
+        },
+        output: [{
+          path: "oblique_prediction.zarr",
+          dataset: "preds/affs",
+          num_channels: 3,
+        }]
+      },
+    ],
   },
 }
