@@ -223,11 +223,11 @@ class EvaluateAnnotations:
             best_edits_thresh = sorted(
                 [
                     (
-                        best_results[thresh]["total_splits_needed_to_fix_merges"]
-                        + best_results[thresh]["total_merges_needed_to_fix_splits"],
+                        results[thresh]["total_splits_needed_to_fix_merges"]
+                        + results[thresh]["total_merges_needed_to_fix_splits"],
                         thresh,
                     )
-                    for thresh in best_results.keys()
+                    for thresh in results.keys()
                 ]
             )
 
