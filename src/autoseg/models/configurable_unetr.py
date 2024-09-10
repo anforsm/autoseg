@@ -14,6 +14,8 @@ class ConfigurableUNETR(torch.nn.Module):
         embed_dim=768,
         num_heads=12,
         patch_size=16,
+        upsample_factors=[[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2]],
+        pad_decoder=True,
         # fmap_inc_factor=5,
         # downsample_factors=((1, 2, 2), (1, 2, 2), (2, 2, 2)),
         # kernel_size_down=(
@@ -43,6 +45,8 @@ class ConfigurableUNETR(torch.nn.Module):
             patch_size=patch_size,
             embed_dim=embed_dim,
             num_heads=num_heads,
+            upsample_factors=upsample_factors,
+            pad_decoder=pad_decoder,
         )
 
         self.heads = torch.nn.ModuleList(

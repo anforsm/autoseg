@@ -5,11 +5,47 @@ import torch.nn.functional as F
 import math
 
 
+def UNetResConcat(a, b):
+    """Center crop a so that it can be concatenated with b
+    a: [b, c, z, y, x]
+    b: [b, c, z, y, x]
+    """
+    a_shape = a.shape
+    b_shape = b.shape
+
+    # Calculate offsets for center cropping
+    z_diff = a_shape[2] - b_shape[2]
+    y_diff = a_shape[3] - b_shape[3]
+    x_diff = a_shape[4] - b_shape[4]
+
+    z_start = z_diff // 2
+    y_start = y_diff // 2
+    x_start = x_diff // 2
+
+    # Perform center cropping
+    a_cropped = a[
+        :,
+        :,
+        z_start : z_start + b_shape[2],
+        y_start : y_start + b_shape[3],
+        x_start : x_start + b_shape[4],
+    ]
+
+    print(a.shape, a_cropped.shape, b.shape)
+    # Concatenate along the channel dimension
+    return torch.cat([a_cropped, b], dim=1)
+
+
 class SingleDeconv3DBlock(nn.Module):
-    def __init__(self, in_planes, out_planes):
+    def __init__(self, in_planes, out_planes, upsample_factors=2):
         super().__init__()
         self.block = nn.ConvTranspose3d(
-            in_planes, out_planes, kernel_size=2, stride=2, padding=0, output_padding=0
+            in_planes,
+            out_planes,
+            kernel_size=upsample_factors,
+            stride=upsample_factors,
+            padding=0,
+            output_padding=0,
         )
 
     def forward(self, x):
@@ -45,10 +81,14 @@ class Conv3DBlock(nn.Module):
 
 
 class Deconv3DBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, kernel_size=3, pad=True):
+    def __init__(
+        self, in_planes, out_planes, kernel_size=3, pad=True, upsample_factors=2
+    ):
         super().__init__()
         self.block = nn.Sequential(
-            SingleDeconv3DBlock(in_planes, out_planes),
+            SingleDeconv3DBlock(
+                in_planes, out_planes, upsample_factors=upsample_factors
+            ),
             SingleConv3DBlock(out_planes, out_planes, kernel_size, pad=pad),
             nn.BatchNorm3d(out_planes),
             nn.ReLU(True),
@@ -143,7 +183,7 @@ class Embeddings(nn.Module):
         super().__init__()
         self.n_patches = int(
             (cube_size[0] * cube_size[1] * cube_size[2])
-            / (patch_size * patch_size * patch_size)
+            / (patch_size[0] * patch_size[1] * patch_size[2])
         )
         self.patch_size = patch_size
         self.embed_dim = embed_dim
@@ -174,7 +214,7 @@ class TransformerBlock(nn.Module):
         self.mlp_norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.mlp_dim = int(
             (cube_size[0] * cube_size[1] * cube_size[2])
-            / (patch_size * patch_size * patch_size)
+            / (patch_size[0] * patch_size[1] * patch_size[2])
         )
         self.mlp = PositionwiseFeedForward(embed_dim, 2048)
         self.attn = SelfAttention(num_heads, embed_dim, dropout)
@@ -238,10 +278,11 @@ class UNETR(nn.Module):
         input_dim=4,
         output_dim=3,
         embed_dim=768,
-        patch_size=16,
+        patch_size=[16, 16, 16],
         num_heads=12,
         dropout=0.1,
         pad_decoder=True,
+        upsample_factors=[[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2]],
     ):
         super().__init__()
         self.input_dim = input_dim
@@ -251,12 +292,23 @@ class UNETR(nn.Module):
         self.patch_size = patch_size
         self.num_heads = num_heads
         self.dropout = dropout
+        self.pad_decoder = pad_decoder
         self.num_layers = 12
         # self.num_layers = 6
         self.ext_layers = [3, 6, 9, 12]
         # self.ext_layers = [3, 6]
+        if not isinstance(patch_size, list) and not isinstance(patch_size, tuple):
+            patch_size = [patch_size for _ in img_shape]
 
-        self.patch_dim = [int(x / patch_size) for x in img_shape]
+        for i in range(3):
+            mul = 1
+            for f in upsample_factors:
+                mul *= f[i]
+            assert (
+                mul == patch_size[i]
+            ), f"Upsample factors must multiply to patch size. Error in dim {i}, upsample factors: {[f[i] for f in upsample_factors]}, patch size: {patch_size[i]}"
+
+        self.patch_dim = [int(x / p_size) for x, p_size in zip(img_shape, patch_size)]
 
         # Transformer Encoder
         self.transformer = Transformer(
@@ -277,37 +329,51 @@ class UNETR(nn.Module):
         )
 
         self.decoder3 = nn.Sequential(
-            Deconv3DBlock(embed_dim, 512, pad=pad_decoder),
-            Deconv3DBlock(512, 256, pad=pad_decoder),
-            Deconv3DBlock(256, 128, pad=pad_decoder),
+            Deconv3DBlock(
+                embed_dim, 512, pad=pad_decoder, upsample_factors=upsample_factors[0]
+            ),
+            Deconv3DBlock(
+                512, 256, pad=pad_decoder, upsample_factors=upsample_factors[1]
+            ),
+            Deconv3DBlock(
+                256, 128, pad=pad_decoder, upsample_factors=upsample_factors[2]
+            ),
         )
 
         self.decoder6 = nn.Sequential(
-            Deconv3DBlock(embed_dim, 512, pad=pad_decoder),
-            Deconv3DBlock(512, 256, pad=pad_decoder),
+            Deconv3DBlock(
+                embed_dim, 512, pad=pad_decoder, upsample_factors=upsample_factors[0]
+            ),
+            Deconv3DBlock(
+                512, 256, pad=pad_decoder, upsample_factors=upsample_factors[1]
+            ),
         )
 
-        self.decoder9 = Deconv3DBlock(embed_dim, 512, pad=pad_decoder)
+        self.decoder9 = Deconv3DBlock(
+            embed_dim, 512, pad=pad_decoder, upsample_factors=upsample_factors[0]
+        )
 
-        self.decoder12_upsampler = SingleDeconv3DBlock(embed_dim, 512)
+        self.decoder12_upsampler = SingleDeconv3DBlock(
+            embed_dim, 512, upsample_factors=upsample_factors[0]
+        )
 
         self.decoder9_upsampler = nn.Sequential(
             Conv3DBlock(1024, 512, pad=pad_decoder),
             Conv3DBlock(512, 512, pad=pad_decoder),
             Conv3DBlock(512, 512, pad=pad_decoder),
-            SingleDeconv3DBlock(512, 256),
+            SingleDeconv3DBlock(512, 256, upsample_factors=upsample_factors[1]),
         )
 
         self.decoder6_upsampler = nn.Sequential(
             Conv3DBlock(512, 256, pad=pad_decoder),
             Conv3DBlock(256, 256, pad=pad_decoder),
-            SingleDeconv3DBlock(256, 128),
+            SingleDeconv3DBlock(256, 128, upsample_factors=upsample_factors[2]),
         )
 
         self.decoder3_upsampler = nn.Sequential(
             Conv3DBlock(256, 128, pad=pad_decoder),
             Conv3DBlock(128, 128, pad=pad_decoder),
-            SingleDeconv3DBlock(128, 64),
+            SingleDeconv3DBlock(128, 64, upsample_factors=upsample_factors[3]),
         )
 
         self.decoder0_header = nn.Sequential(
@@ -326,12 +392,36 @@ class UNETR(nn.Module):
         z12 = z12.transpose(-1, -2).view(-1, self.embed_dim, *self.patch_dim)
 
         z12 = self.decoder12_upsampler(z12)
+
         z9 = self.decoder9(z9)
-        z9 = self.decoder9_upsampler(torch.cat([z9, z12], dim=1))
+        if self.pad_decoder:
+            inp_ = torch.cat([z9, z12], dim=1)
+        else:
+            # we need to crop z12
+            inp_ = UNetResConcat(z12, z9)
+        z9 = self.decoder9_upsampler(inp_)
+
         z6 = self.decoder6(z6)
-        z6 = self.decoder6_upsampler(torch.cat([z6, z9], dim=1))
+        if self.pad_decoder:
+            inp_ = torch.cat([z6, z9], dim=1)
+        else:
+            # reverse order of cropping for all other skip connections than the first
+            inp_ = UNetResConcat(z6, z9)
+        z6 = self.decoder6_upsampler(inp_)
+
         z3 = self.decoder3(z3)
-        z3 = self.decoder3_upsampler(torch.cat([z3, z6], dim=1))
+        if self.pad_decoder:
+            inp_ = torch.cat([z3, z6], dim=1)
+        else:
+            # we need to crop z12
+            inp_ = UNetResConcat(z3, z6)
+        z3 = self.decoder3_upsampler(inp_)
+
         z0 = self.decoder0(z0)
-        output = self.decoder0_header(torch.cat([z0, z3], dim=1))
+        if self.pad_decoder:
+            inp_ = torch.cat([z0, z3], dim=1)
+        else:
+            # we need to crop z12
+            inp_ = UNetResConcat(z0, z3)
+        output = self.decoder0_header(inp_)
         return output

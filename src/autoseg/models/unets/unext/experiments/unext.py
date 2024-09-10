@@ -104,6 +104,7 @@ class UNeXt(nn.Module):
         Upsample=UpsampleBase,
         fmap_inc_factor=5,
         debug=False,
+        **kwargs,
     ):
         super().__init__()
         self.debug = debug
