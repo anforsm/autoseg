@@ -7,7 +7,7 @@ defaults + {
   pipeline+: {
     source: [
       [
-        [zarrsource.zarr_source("SynapseWeb/kh2015/apical", "resampled")] + pad,
+        [zarrsource.zarr_source("SynapseWeb/kh2015/apical.zarr", "resampled")] + pad,
       ],
       {random_provider: {}}
     ],
@@ -18,7 +18,7 @@ defaults + {
       pipeline+: {
         source: [
           [
-            [zarrsource.zarr_source("SynapseWeb/kh2015/spine", "resampled")] + pad,
+            [zarrsource.zarr_source("SynapseWeb/kh2015/spine.zarr", "resampled")] + pad,
           ],
           {random_provider: {}}
         ],
@@ -34,11 +34,11 @@ defaults + {
         name: "Oblique",
         shape_increase: [-12, 405, 405],
         mask: {
-          path: "SynapseWeb/kh2015/oblique",
+          path: "SynapseWeb/kh2015/oblique.zarr",
           dataset: "labels_mask/resampled"
         },
         source: {
-          path: "SynapseWeb/kh2015/oblique",
+          path: "SynapseWeb/kh2015/oblique.zarr",
           dataset: "raw/resampled"
         },
         output: [{

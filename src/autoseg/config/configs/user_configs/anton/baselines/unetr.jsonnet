@@ -5,6 +5,7 @@ local zarrsource = import "autoseg/defaults/zarrsource";
 defaults + {
   model+: {
     local img_shape = [48, 272, 272],
+    #local img_shape = [128, 128, 128],
     name: "v2_UNETR",
     path: "checkpoints/",
     #hf_path: "anforsm/" + self.name,
