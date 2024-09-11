@@ -31,7 +31,6 @@ def UNetResConcat(a, b):
         x_start : x_start + b_shape[4],
     ]
 
-    print(a.shape, a_cropped.shape, b.shape)
     # Concatenate along the channel dimension
     return torch.cat([a_cropped, b], dim=1)
 

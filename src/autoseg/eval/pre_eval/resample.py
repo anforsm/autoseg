@@ -28,7 +28,7 @@ def resample(raw_file, in_dataset, out_file, out_dataset):
             raw: in_dataset,
         },
         {
-            raw: gp.ArraySpec(interpolatable=True),
+            raw: gp.ArraySpec(interpolatable=not "labels" in in_dataset),
         },
     )
 
@@ -49,7 +49,7 @@ def resample(raw_file, in_dataset, out_file, out_dataset):
         num_channels=None,
     )
 
-    scan = gp.Scan(scan_request, num_workers=50)
+    scan = gp.Scan(scan_request)
 
     write = gp.ZarrWrite(
         dataset_names={
@@ -64,6 +64,7 @@ def resample(raw_file, in_dataset, out_file, out_dataset):
             raw,
             target_voxel_size,
             resampled,
+            interp_order=0 if "labels" in in_dataset else 1,
         )
         + write
         + scan

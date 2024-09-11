@@ -51,6 +51,12 @@ defaults + {
   },
 
   model+: {
+    local img_shape = [48, 272, 272],
+    input_image_shape: img_shape,
+    output_image_shape: img_shape,
     name: "v2_UNETR_isotropic_training",
+    hyperparameters: {
+      img_shape: img_shape,
+    }
   },
 }
