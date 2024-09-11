@@ -7,7 +7,7 @@ defaults + {
     path: "checkpoints/",
     class: "UNeXt",
     input_image_shape: [54, 192, 192],
-    output_image_shape: [26, 60, 60],
+    output_image_shape: [26, 100, 100],
     #input_image_shape: [54, 268, 268],
     #output_image_shape: [26, 56, 56],
     hyperparameters: {
