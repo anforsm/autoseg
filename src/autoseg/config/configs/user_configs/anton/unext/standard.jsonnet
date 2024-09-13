@@ -3,7 +3,7 @@ local defaults = import "autoseg/user_configs/anton/baselines/unet";
 defaults + {
   predict+: {
     shape_increase: [0, 0, 0],
-  }
+  },
   model+: {
     name: "v2_UNeXt_Standard",
     version: "Final",
