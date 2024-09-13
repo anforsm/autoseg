@@ -19,7 +19,7 @@ def get_synapseweb_dataset_names(dataset):
     else:
         if dataset.endswith(".graphml"):
             filename = f"data/{volume}"
-        if dataset.endswith(".zarr"):
+        elif dataset.endswith(".zarr"):
             filename = f"data/{volume}"
         else:
             filename = f"data/{volume}.zarr.zip"
