@@ -1,7 +1,7 @@
 local base = import "autoseg/user_configs/anton/unext/patchify.jsonnet";
 
 base + {
-  train+: {
+  training+: {
     update_steps: 50000,
     log_snapshot_every: 100,
     save_every: 1000, # save model every x iterations
