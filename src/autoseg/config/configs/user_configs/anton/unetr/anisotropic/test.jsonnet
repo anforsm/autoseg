@@ -10,6 +10,6 @@ base + {
     num_val_samples: 10,
   },
   model+: {
-    name+: "_run_3"
+    name+: "_run_test"
   }
 }

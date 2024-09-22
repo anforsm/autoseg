@@ -4,8 +4,9 @@ local zarrsource = import "autoseg/defaults/zarrsource";
 
 defaults + {
   model+: {
-    local img_shape = [48, 240, 240],
-    name: "v2_UNETR_patch_size",
+    #local img_shape = [48, 240, 240],
+    local img_shape = [24, 320, 320],
+    name: "v3_UNETR_patch_size",
     input_image_shape: img_shape,
     output_image_shape: img_shape,
     hyperparameters+: {
