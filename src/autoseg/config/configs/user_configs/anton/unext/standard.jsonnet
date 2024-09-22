@@ -1,27 +1,6 @@
 local defaults = import "autoseg/user_configs/anton/baselines/unet";
 
 defaults + {
-  predict+: {
-    datasets: [
-      {
-        name: "Oblique",
-        shape_increase: [-12, 408, 408],
-        mask: {
-          path: "SynapseWeb/kh2015/oblique",
-          dataset: "labels_mask/s1"
-        },
-        source: {
-          path: "SynapseWeb/kh2015/oblique",
-          dataset: "raw/s1"
-        },
-        output: [{
-          path: "oblique_prediction.zarr",
-          dataset: "preds/affs",
-          num_channels: 3,
-        }]
-      },
-    ],
-  },
   model+: {
     name: "v3_UNeXt_Standard",
     version: "Final",
