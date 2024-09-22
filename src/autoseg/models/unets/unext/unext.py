@@ -97,6 +97,7 @@ class ConvPass(nn.Module):
         bottleneck_fmap_inc=4,
         encoder=False,
         i=0,  # eg 12  # eg 60
+        max_i=1,
     ):
         super().__init__()
 
@@ -114,7 +115,8 @@ class ConvPass(nn.Module):
                 in_channels,
                 5,
                 groups=in_channels,
-                padding="valid" if i == 2 else "same",
+                # v2 has i == 2.
+                padding="valid" if i == max_i else "same",
             )
             self.norm1 = LayerNorm(in_channels)
 
@@ -213,6 +215,7 @@ class UNeXt(nn.Module):
                     bottleneck_fmap_inc=bottleneck_fmap_inc,
                     encoder=True,
                     i=i,
+                    max_i=stage_ratio[0] - 1,
                 )
                 for i in range(stage_ratio[0])
             ],
@@ -230,6 +233,7 @@ class UNeXt(nn.Module):
                     bottleneck_fmap_inc=bottleneck_fmap_inc,
                     encoder=True,
                     i=i,
+                    max_i=stage_ratio[1] - 1,
                 )
                 for i in range(stage_ratio[1])
             ]
@@ -247,6 +251,7 @@ class UNeXt(nn.Module):
                     bottleneck_fmap_inc=bottleneck_fmap_inc,
                     encoder=True,
                     i=i,
+                    max_i=stage_ratio[2] - 1,
                 )
                 for i in range(stage_ratio[2])
             ]
@@ -264,6 +269,7 @@ class UNeXt(nn.Module):
                     bottleneck_fmap_inc=bottleneck_fmap_inc,
                     encoder=True,
                     i=i,
+                    max_i=stage_ratio[3] - 1,
                 )
                 for i in range(stage_ratio[3])
             ],
